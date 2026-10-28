@@ -1,0 +1,5 @@
+/* Kept in its own section so the banner survives --gc-sections and is
+ * greppable in the binary. @VCS_TAG@ is filled in by meson vcs_tag(). */
+
+__attribute__((section(".build_info"), used)) const char g_build_banner[] =
+    "HILT @VCS_TAG@ (built " __DATE__ " " __TIME__ ", gcc " __VERSION__ ")\n";

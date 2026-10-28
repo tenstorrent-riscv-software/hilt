@@ -1,0 +1,25 @@
+#ifndef __TIME_H__
+#define __TIME_H__
+
+#include <types.h>
+#include <cpu.h>
+#include <clock.h>
+
+static inline void delay(uint64_t ticks)
+{
+    uint64_t t0 = get_clock();
+
+    while (get_clock() - t0 < ticks)
+        cpu_relax();
+}
+
+extern uint64_t timebase_frequency;
+
+static inline void udelay(uint64_t us)
+{
+    delay(us * timebase_frequency / 1000000);
+}
+
+void time_init(uint64_t clock_frequency);
+
+#endif /* __TIME_H__ */
