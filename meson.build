@@ -28,6 +28,8 @@ hilt_inc = include_directories(
 
 python = find_program('python3')
 bin2hex = files('tools/bin2hex.py')
+python = find_program('python3')
+mksimg= files('tools/mksimg.py')
 
 if meson.is_cross_build()
   # ---- Firmware ----
@@ -142,5 +144,24 @@ if meson.is_cross_build()
     input: rcpu_runtime_elf,
     output: 'rcpu_runtime-placeholder.bin',
     command: [objcopy, '-O', 'binary', '@INPUT@', '@OUTPUT@'],
+  )
+
+  # simg wrapped binary
+  hilt_simg = custom_target(
+    'hilt.simg',
+    input: [mksimg, hilt_bin['sram']],
+    output: 'hilt.simg',
+    command: [python, '@INPUT0@', '@INPUT1@', '--patch-header', '-o', '@OUTPUT@'],
+    build_by_default: true,
+  )
+
+  # For now platform-fw is just hilt runtime
+  platform_fw_simg = custom_target(
+    'platform-fw.simg',
+    input: [mksimg, rcpu_runtime],
+    output: 'platform-fw.simg',
+    command: [python, '@INPUT0@', '@INPUT1@', '--payload-type', 'platform-fw',
+              '--app-name', 'platform-fw', '-o', '@OUTPUT@'],
+    build_by_default: true,
   )
 endif
