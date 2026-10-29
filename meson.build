@@ -25,6 +25,10 @@ hilt_inc = include_directories(
     'src/include',
     'src/arch/riscv/include',
 )
+
+python = find_program('python3')
+mksimg= files('tools/mksimg.py')
+
 if meson.is_cross_build()
   # ---- Firmware ----
   cc = meson.get_compiler('c')
@@ -119,6 +123,15 @@ if meson.is_cross_build()
     )}
   endforeach
 
+  # simg wrapped binary
+  hilt_simg = custom_target(
+    'hilt.simg',
+    input: [mksimg, hilt_bin['sram']],
+    output: 'hilt-simg.img',
+    command: [python, '@INPUT0@', '@INPUT1@', '--patch-header'],
+    build_by_default: true,
+  )
+
   bin2hex = find_program('scripts/bin2hex')
   sh = find_program('sh')
   rom_load_addr = '0x00040000'
@@ -144,5 +157,14 @@ if meson.is_cross_build()
       'import sys; open(sys.argv[1], "wb").write(b"HILT runtime placeholder\\0" * 160)',
       '@OUTPUT@',
     ],
+  )
+
+  # For now platform-fw is just hilt runtime
+  platform_fw_simg = custom_target(
+    'platform-fw.simg',
+    input: [mksimg, hilt_runtime],
+    output: 'platform-fw.simg',
+    command: [python, '@INPUT0@', '@INPUT1@', '--patch-header'],
+    build_by_default: true,
   )
 endif
