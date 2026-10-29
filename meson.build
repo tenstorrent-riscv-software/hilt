@@ -17,6 +17,10 @@ hilt_inc = include_directories(
     'src/include',
     'src/arch/riscv/include',
 )
+
+mksimg= files('tools/mksimg.py')
+python = find_program('python3')
+
 if meson.is_cross_build()
   # ---- Firmware ----
   cc = meson.get_compiler('c')
@@ -108,4 +112,13 @@ if meson.is_cross_build()
       build_by_default: true,
     )}
   endforeach
+
+  # simg wrapped binary
+  hilt_simg = custom_target(
+    'hilt.simg',
+    input: [mksimg, hilt_bin['sram']],
+    output: 'hilt-simg.img',
+    command: [python, '@INPUT0@', '@INPUT1@', '--patch-header'],
+    build_by_default: true,
+  )
 endif
