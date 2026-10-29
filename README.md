@@ -7,7 +7,7 @@ Firmware for the Tenstorrent Atlantis SoC System Management Controller
 
 ## Building
 
-Requires `riscv64-unknown-elf-gcc`, meson, and ninja.
+Requires `riscv64-unknown-elf-gcc`, meson, ninja, and Python 3.
 
 ```sh
 meson setup build --cross-file cross/riscv32-rondel.ini
@@ -17,6 +17,7 @@ ninja -C build
 Build outputs are produced in the build/ directory:
 
 - `hilt.bin` / `hilt.elf` - the firmware targeting RCPU SRAM.
+- `hilt.simg` - a simg of hilt.bin
 - `hilt-rom.bin` / `hilt-rom.elf` - bootrom image
 - `hilt-rom_h.hex` / `hilt-rom_l.hex` - bootrom memory files for HAPs
 
