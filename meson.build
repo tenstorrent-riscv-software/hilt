@@ -18,7 +18,9 @@ hilt_inc = include_directories(
     'src/arch/riscv/include',
 )
 
-mksimg= files('tools/mksimg.py')
+mksimg = files('tools/mksimg.py')
+mknor = files('tools/mknor.py')
+nor_layout = files('tools/nor.toml')
 python = find_program('python3')
 
 if meson.is_cross_build()
@@ -117,8 +119,18 @@ if meson.is_cross_build()
   hilt_simg = custom_target(
     'hilt.simg',
     input: [mksimg, hilt_bin['sram']],
-    output: 'hilt-simg.img',
-    command: [python, '@INPUT0@', '@INPUT1@', '--patch-header'],
+    output: 'hilt.simg',
+    command: [python, '@INPUT0@', '@INPUT1@', '--patch-header', '-o', '@OUTPUT@'],
+    build_by_default: true,
+  )
+
+  # Write NOR image
+  hilt_nor = custom_target(
+    'hilt-nor.img',
+    input: [mknor, hilt_simg],
+    output: 'hilt-nor.img',
+    command: [python, '@INPUT0@', '-c', nor_layout, '-d', '@OUTDIR@', '-o', '@OUTPUT@'],
+    depend_files: nor_layout,
     build_by_default: true,
   )
 endif
