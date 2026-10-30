@@ -31,6 +31,7 @@ image_sources = files('src/crc32.c', 'src/image/simg.c')
 
 python = find_program('python3')
 mksimg= files('tools/mksimg.py')
+mknor = files('tools/mknor.py')
 
 if meson.is_cross_build()
   # ---- Firmware ----
@@ -130,8 +131,8 @@ if meson.is_cross_build()
   hilt_simg = custom_target(
     'hilt.simg',
     input: [mksimg, hilt_bin['sram']],
-    output: 'hilt-simg.img',
-    command: [python, '@INPUT0@', '@INPUT1@', '--patch-header'],
+    output: 'hilt.simg',
+    command: [python, '@INPUT0@', '@INPUT1@', '--patch-header', '-o', '@OUTPUT@'],
     build_by_default: true,
   )
 
@@ -167,7 +168,18 @@ if meson.is_cross_build()
     'platform-fw.simg',
     input: [mksimg, hilt_runtime],
     output: 'platform-fw.simg',
-    command: [python, '@INPUT0@', '@INPUT1@', '--patch-header'],
+    command: [python, '@INPUT0@', '@INPUT1@', '--payload-type', 'platform-fw',
+              '--app-name', 'platform-fw', '-o', '@OUTPUT@'],
+    build_by_default: true,
+  )
+
+  # Write NOR image: each SIMG at the offset tools/mknor.py assigns to its
+  # payload type
+  hilt_nor = custom_target(
+    'nor.img',
+    input: [mknor, hilt_simg, platform_fw_simg],
+    output: 'nor.img',
+    command: [python, '@INPUT0@', '-o', '@OUTPUT@', '@INPUT1@', '@INPUT2@'],
     build_by_default: true,
   )
 else
