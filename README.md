@@ -23,6 +23,15 @@ Build outputs are produced in the build/ directory:
 - `platform-fw.simg` - a simg of the platform-fw. Currently this is a
    placeholder binary.
 
+## Host unit tests
+
+Unit tests can be run natively on the host running:
+
+```sh
+meson setup build-host
+meson test -C build-host
+```
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for information on how to contribute to this project.
