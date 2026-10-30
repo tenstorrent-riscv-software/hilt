@@ -31,6 +31,23 @@ meson setup build-host
 meson test -C build-host
 ```
 
+## Boot test on QEMU
+
+The generated NOR image can be tested on the `tt-atlantis` machine on
+Tenstorrent QEMU fork. It requires a QEMU build at ../out. By default,
+the ZSBL (qemu/pc-bios/tt-zsbl) will boot first and load HILT from the nor
+image before handing off execution to HILT.
+
+```sh
+./tests/target/run-qemu-boot.sh
+```
+
+To test with the HILT bootrom image instead of ZSBL:
+
+```sh
+BOOTROM=build/hilt-rom.bin tests/target/run-qemu-boot.sh
+```
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for information on how to contribute to this project.
