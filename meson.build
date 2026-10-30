@@ -26,6 +26,9 @@ hilt_inc = include_directories(
     'src/arch/riscv/include',
 )
 
+# simg parsing source code. Must be able to be compiled on the host for testing
+image_sources = files('src/crc32.c', 'src/image/simg.c')
+
 python = find_program('python3')
 mksimg= files('tools/mksimg.py')
 
@@ -167,4 +170,38 @@ if meson.is_cross_build()
     command: [python, '@INPUT0@', '@INPUT1@', '--patch-header'],
     build_by_default: true,
   )
+else
+  # ---- host unit tests ----
+  simg_lib = static_library(
+    'simg',
+    image_sources,
+    include_directories: hilt_inc,
+  )
+
+  test_simg = executable(
+    'test_simg',
+    'tests/host/test_simg.c',
+    include_directories: hilt_inc,
+    link_with: simg_lib,
+  )
+
+  golden_payload = custom_target(
+    'golden-payload.bin',
+    output: 'golden-payload.bin',
+    command: [
+      python, '-c',
+      'import sys; open(sys.argv[1], "wb").write(bytes(range(256)) * 37)',
+      '@OUTPUT@',
+    ],
+  )
+
+  # Generate a simg from the packing tool and test against parsing library
+  golden_simg = custom_target(
+    'golden.simg',
+    input: [mksimg, golden_payload],
+    output: 'golden.simg',
+    command: [python, '@INPUT0@', '@INPUT1@', '--patch-header', '-o', '@OUTPUT@'],
+  )
+
+  test('simg', test_simg, args: [golden_simg])
 endif

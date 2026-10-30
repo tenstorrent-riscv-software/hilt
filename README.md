@@ -21,6 +21,15 @@ Build outputs are produced in the build/ directory:
 - `hilt-rom.bin` / `hilt-rom.elf` - bootrom image
 - `hilt-rom_h.hex` / `hilt-rom_l.hex` - bootrom memory files for HAPs
 
+## Host unit tests
+
+Unit tests can be run natively on the host running:
+
+```sh
+meson setup build-host
+meson test -C build-host
+```
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for information on how to contribute to this project.
