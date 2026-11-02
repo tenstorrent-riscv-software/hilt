@@ -6,9 +6,15 @@
 #ifndef __PLATFORM_ATLANTIS_H__
 #define __PLATFORM_ATLANTIS_H__
 
+#include <types.h>
+
+struct boot_image;
+
 int platform_atlantis_init(void);
 
 /* True when running from the mask ROM as the bootrom, false when loaded into SRAM */
 bool platform_atlantis_is_bootrom(void);
 
+/* The firmware pieces this stage boots, in load order. */
+const struct boot_image *platform_atlantis_boot_images(size_t *count);
 #endif /* __PLATFORM_ATLANTIS_H__ */

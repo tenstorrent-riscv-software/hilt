@@ -8,6 +8,7 @@
 #include <timer.h>
 #include <drivers/uart_dw_16550.h>
 #include <console.h>
+#include <image/boot_image.h>
 
 #define MMR_SOC_PLL_RCPU_CFG             0x000
 #define MMR_SOC_PLL_NOCC_CFG             0x004
@@ -243,6 +244,38 @@ static void detect_stage(void)
 bool platform_atlantis_is_bootrom(void)
 {
     return g_is_bootrom;
+}
+
+/* Images to be loaded by the HILT bootrom. Offsets match tools/mknor.py. */
+static const struct boot_image bootrom_images[] = {
+    {
+        .name = "hilt",
+        .type = SIMG_PAYLOAD_HILT_BOOT,
+        .load_addr = 0x20100000,
+        .max_size = 0x40000,
+        .nor_offset = 0x10000,
+    },
+};
+
+/* Images to be loaded by the HILT boot stage */
+static const struct boot_image fsbl_boot_images[] = {
+    {
+        .name = "hilt_runtime",
+        .type = SIMG_PAYLOAD_PLATFORM_FW,
+        .load_addr = 0x20140000,
+        .max_size = 0x80000,
+        .nor_offset = 0x50000,
+    },
+};
+
+const struct boot_image *platform_atlantis_boot_images(size_t *count)
+{
+    if (platform_atlantis_is_bootrom()) {
+        *count = sizeof(bootrom_images) / sizeof(bootrom_images[0]);
+        return bootrom_images;
+    }
+    *count = sizeof(fsbl_boot_images) / sizeof(fsbl_boot_images[0]);
+    return fsbl_boot_images;
 }
 
 #define HAPS_FREQUENCY 2500000

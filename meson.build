@@ -27,7 +27,7 @@ hilt_inc = include_directories(
 )
 
 # simg parsing source code. Must be able to be compiled on the host for testing
-image_sources = files('src/crc32.c', 'src/image/simg.c')
+image_sources = files('src/crc32.c', 'src/image/simg.c', 'src/image/boot_image.c')
 
 python = find_program('python3')
 mksimg= files('tools/mksimg.py')
@@ -87,6 +87,7 @@ if meson.is_cross_build()
     'src/platform/atlantis.c',
     'src/main.c',
     'src/timer.c',
+    image_sources,
     build_info_c,
   ]
 
