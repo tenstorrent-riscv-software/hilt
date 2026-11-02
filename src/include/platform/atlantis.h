@@ -17,4 +17,8 @@ bool platform_atlantis_is_bootrom(void);
 
 /* The firmware pieces this stage boots, in load order. */
 const struct boot_image *platform_atlantis_boot_images(size_t *count);
+
+const char *platform_atlantis_boot_mode_name(void);
+const char *platform_atlantis_boot_cause_name(void);
+
 #endif /* __PLATFORM_ATLANTIS_H__ */

@@ -24,7 +24,9 @@ int main(void)
         target = "bootrom";
     }
     printf("%s", g_build_banner);
-    printf("HILT %s\n", target);
+    printf("HILT %s: boot mode %s, boot cause %s\n",
+            target, platform_atlantis_boot_mode_name(),
+            platform_atlantis_boot_cause_name());
 
     images = platform_atlantis_boot_images(&count);
     for (size_t i = 0; i < count; i++) {
