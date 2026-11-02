@@ -84,6 +84,7 @@ if meson.is_cross_build()
     'src/console.c',
     'src/drivers/serial/uart_8250.c',
     'src/drivers/serial/uart_dw_16550.c',
+    'src/drivers/spi/dwc_ssi.c',
     'src/platform/atlantis.c',
     'src/main.c',
     'src/timer.c',
