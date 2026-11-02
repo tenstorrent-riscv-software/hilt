@@ -16,6 +16,7 @@ int main(void)
     size_t count;
     bool is_bootrom;
     const char *target = "SRAM";
+    int rc;
 
     platform_atlantis_init();
 
@@ -33,7 +34,12 @@ int main(void)
         printf("HILT: image %s: load 0x%08x, NOR 0x%x\n",
                images[i].name, (unsigned)images[i].load_addr,
                (unsigned)images[i].nor_offset);
+        rc = platform_atlantis_load_boot_image(&images[i]);
+        if (rc) {
+            printf("failed to load %s rc=%d\n", images[i].name, rc);
+        }
     }
+
 
     printf("HILT: complete\n");
     for (;;)
