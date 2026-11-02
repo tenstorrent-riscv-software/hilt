@@ -39,6 +39,9 @@ REGION_ALIAS("REGION_TEXT",     @TEXT_REGION@)
 REGION_ALIAS("REGION_DATA",     @DATA_REGION@)
 REGION_ALIAS("REGION_DATA_LMA", @DATA_LMA_REGION@)
 
+/* 1 when the code is linked into the mask ROM, i.e. this is the bootrom image. */
+PROVIDE(__is_bootrom = ORIGIN(REGION_TEXT) == ORIGIN(rom));
+
 SECTIONS
 {
     /* 512-byte SIMG header placeholder; see src/arch/riscv/header.S. */
