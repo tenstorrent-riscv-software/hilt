@@ -1,3 +1,8 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: 2025-2026 Tenstorrent USA, Inc.
+ */
+
 #include "image/simg.h"
 
 #include <crc32.h>

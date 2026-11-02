@@ -1,4 +1,7 @@
 /*
+ * SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: 2025-2026 Tenstorrent USA, Inc.
+ *
  * Atlantis SIMG v1 container: [512-byte header][payload][384-byte signature].
  *
  * The wire format is fixed by the ZSBL mask ROM and must byte-match the

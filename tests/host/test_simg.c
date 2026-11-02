@@ -1,4 +1,7 @@
 /*
+ * SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: 2025-2026 Tenstorrent USA, Inc.
+ *
  * Host-side unit tests for the SIMG header parser.
  *
  * Runs two ways:
