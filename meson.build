@@ -130,4 +130,17 @@ if meson.is_cross_build()
     command: [python, '@INPUT0@', '@INPUT1@', '@OUTPUT0@', '@OUTPUT1@'],
     build_by_default: true,
   )
+
+  # Placeholder for the runtime stage: loops on a wfi
+  rcpu_runtime_elf = executable(
+    'rcpu_runtime-placeholder.elf',
+    'src/arch/riscv/runtime_placeholder.S',
+  )
+
+  rcpu_runtime = custom_target(
+    'rcpu_runtime-placeholder.bin',
+    input: rcpu_runtime_elf,
+    output: 'rcpu_runtime-placeholder.bin',
+    command: [objcopy, '-O', 'binary', '@INPUT@', '@OUTPUT@'],
+  )
 endif
