@@ -134,4 +134,15 @@ if meson.is_cross_build()
     depend_files: files('scripts/bin2hex'),
     build_by_default: true,
   )
+
+  # Placeholder for the runtime stage
+  hilt_runtime = custom_target(
+    'hilt_runtime-placeholder.bin',
+    output: 'hilt_runtime-placeholder.bin',
+    command: [
+      python, '-c',
+      'import sys; open(sys.argv[1], "wb").write(b"HILT runtime placeholder\\0" * 160)',
+      '@OUTPUT@',
+    ],
+  )
 endif
