@@ -227,6 +227,17 @@ static void soc_lsio_uart0_set_cg_enable(bool enable)
     udelay(CLOCK_GATE_DELAY_US);
 }
 
+/*
+ * __is_bootrom is set to 1 by linker script if this image is compiled for
+ * maskrom. Use this to determine if the bootrom or SRAM image is running
+ */
+extern char __is_bootrom[] __attribute__((weak));
+
+bool platform_atlantis_is_bootrom(void)
+{
+    return (uintptr_t)__is_bootrom != 0;
+}
+
 #define HAPS_FREQUENCY 2500000
 
 static uint64_t uart_clock_frequency(void)
