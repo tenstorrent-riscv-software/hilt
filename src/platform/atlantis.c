@@ -114,6 +114,21 @@
 #define MMR_SOC_PLL_LPDDR1_CFG           0x1A8
 #define MMR_SOC_PLL_PCIE_CFG             0x1AC
 #define MMR_SOC_RCPU_BOOT_MODE           0x1B0
+#define   SOC_RCPU_BOOT_MODE_RESET_STATUS_MASK          (0xFU << 0)
+#define   SOC_RCPU_BOOT_MODE_RESET_STATUS_SHIFT         0
+#define   SOC_RCPU_BOOT_MODE_STATUS_POR                 0
+#define   SOC_RCPU_BOOT_MODE_STATUS_RESETN              1
+#define   SOC_RCPU_BOOT_MODE_STATUS_WDT0                2
+#define   SOC_RCPU_BOOT_MODE_STATUS_WDT1                3
+#define   SOC_RCPU_BOOT_MODE_STATUS_GLOBAL_SOFT_RESET   4
+#define   SOC_RCPU_BOOT_MODE_STATUS_RCPU_SOFT_RESET     5
+#define   SOC_RCPU_BOOT_MODE_STATUS_NDM_RESET           6
+#define   SOC_RCPU_BOOT_MODE_BOOT_SEL_MASK              (0x3U << 4)
+#define   SOC_RCPU_BOOT_MODE_BOOT_SEL_SHIFT             4
+#define   SOC_RCPU_BOOT_MODE_SEL_UART                   0
+#define   SOC_RCPU_BOOT_MODE_SEL_NOR                    1
+#define   SOC_RCPU_BOOT_MODE_SEL_SD                     2
+#define   SOC_RCPU_BOOT_MODE_SEL_INVALID                3
 #define MMR_SOC_RCPU_PLL_FRAC            0x1B4
 #define MMR_SOC_NOCC_PLL_FRAC            0x1B8
 #define MMR_SOC_HSIO_PLL_FRAC            0x1BC
@@ -292,11 +307,60 @@ static uint64_t rcpu_clock_frequency(void)
 
 #define UART0_BASE 0x48100000U
 
+static uint8_t g_boot_mode;
+static uint8_t g_boot_cause;
+
+static void soc_read_boot_mode(void)
+{
+    uint32_t reg = soc_mmr_read(MMR_SOC_RCPU_BOOT_MODE);
+    g_boot_mode = (reg & SOC_RCPU_BOOT_MODE_BOOT_SEL_MASK) >>
+                  SOC_RCPU_BOOT_MODE_BOOT_SEL_SHIFT;
+    g_boot_cause = (reg & SOC_RCPU_BOOT_MODE_RESET_STATUS_MASK) >>
+                   SOC_RCPU_BOOT_MODE_RESET_STATUS_SHIFT;
+}
+
+const char *platform_atlantis_boot_mode_name(void)
+{
+    switch (g_boot_mode) {
+    case SOC_RCPU_BOOT_MODE_SEL_UART:
+        return "UART";
+    case SOC_RCPU_BOOT_MODE_SEL_NOR:
+        return "NOR";
+    case SOC_RCPU_BOOT_MODE_SEL_SD:
+        return "SD";
+    default:
+        return "invalid";
+    }
+}
+
+const char *platform_atlantis_boot_cause_name(void)
+{
+    switch (g_boot_cause) {
+    case SOC_RCPU_BOOT_MODE_STATUS_POR:
+        return "power on";
+    case SOC_RCPU_BOOT_MODE_STATUS_RESETN:
+        return "external reset";
+    case SOC_RCPU_BOOT_MODE_STATUS_WDT0:
+        return "watchdog 0";
+    case SOC_RCPU_BOOT_MODE_STATUS_WDT1:
+        return "watchdog 1";
+    case SOC_RCPU_BOOT_MODE_STATUS_GLOBAL_SOFT_RESET:
+        return "global soft reset";
+    case SOC_RCPU_BOOT_MODE_STATUS_RCPU_SOFT_RESET:
+        return "RCPU soft reset";
+    case SOC_RCPU_BOOT_MODE_STATUS_NDM_RESET:
+        return "RCPU debug reset";
+    default:
+        return "unknown";
+    }
+}
+
 int platform_atlantis_init(void)
 {
     time_init(rcpu_clock_frequency());
 
     detect_stage();
+    soc_read_boot_mode();
 
     soc_nocc_bus_reset_release();
 
