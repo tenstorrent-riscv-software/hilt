@@ -4,11 +4,16 @@
  */
 
 #include <platform/atlantis.h>
+#include <errno.h>
 #include <mmio.h>
+#include <stdio.h>
 #include <timer.h>
 #include <drivers/uart_dw_16550.h>
+#include <drivers/dwc_ssi.h>
+#include <drivers/spi_nor.h>
 #include <console.h>
 #include <image/boot_image.h>
+#include "image/simg.h"
 
 #define MMR_SOC_PLL_RCPU_CFG             0x000
 #define MMR_SOC_PLL_NOCC_CFG             0x004
@@ -225,19 +230,19 @@ static void soc_nocc_bus_reset_release(void)
     soc_mmr_write(MMR_SOC_BUS_RSTN, reg | SOC_BUS_RSTN_NOCC_CLK);
 }
 
-static void soc_lsio_uart0_reset_release(void)
+static void soc_lsio_reset_release(uint32_t mask)
 {
     uint32_t reg = soc_mmr_read(MMR_SOC_LSIO_BLK_RST);
-    soc_mmr_write(MMR_SOC_LSIO_BLK_RST, reg | SOC_LSIO_BLK_RST_UART0);
+    soc_mmr_write(MMR_SOC_LSIO_BLK_RST, reg | mask);
 }
 
-static void soc_lsio_uart0_set_cg_enable(bool enable)
+static void soc_lsio_set_cg_enable(uint32_t mask, bool enable)
 {
     uint32_t reg = soc_mmr_read(MMR_SOC_LSIO_BLK_CG);
     if (enable) {
-        reg |= SOC_LSIO_BLK_CG_UART0;
+        reg |= mask;
     } else {
-        reg &= ~SOC_LSIO_BLK_CG_UART0;
+        reg &= ~mask;
     }
     soc_mmr_write(MMR_SOC_LSIO_BLK_CG, reg);
     udelay(CLOCK_GATE_DELAY_US);
@@ -301,6 +306,12 @@ static uint64_t uart_clock_frequency(void)
 }
 
 static uint64_t rcpu_clock_frequency(void)
+{
+    return HAPS_FREQUENCY;
+}
+
+/* The QSPI reference clock is the NOCC clock. */
+static uint64_t qspi_clock_frequency(void)
 {
     return HAPS_FREQUENCY;
 }
@@ -373,8 +384,8 @@ int platform_atlantis_init(void)
 
     soc_nocc_bus_reset_release();
 
-    soc_lsio_uart0_set_cg_enable(true);
-    soc_lsio_uart0_reset_release();
+    soc_lsio_set_cg_enable(SOC_LSIO_BLK_CG_UART0, true);
+    soc_lsio_reset_release(SOC_LSIO_BLK_RST_UART0);
 
     /* Ignore failing uart_init for now until postcodes are added */
     uart_dw_16550_init(UART0_BASE, uart_clock_frequency(), 9600);
@@ -385,5 +396,82 @@ int platform_atlantis_init(void)
      */
     console_init(UART0_BASE);
 
+    /* The bootrom has already done this on a NOR boot; repeating it is harmless. */
+    if (g_boot_mode == SOC_RCPU_BOOT_MODE_SEL_NOR) {
+        soc_lsio_set_cg_enable(SOC_LSIO_BLK_CG_QSPI, true);
+        soc_lsio_reset_release(SOC_LSIO_BLK_RST_QSPI);
+    }
+
     return 0;
+}
+
+static int nor_init(struct dwc_ssi *ssi, struct spi_nor *nor)
+{
+    int rc;
+
+    rc = dwc_ssi_init(ssi, QSPI0_BASE, qspi_clock_frequency(),
+                          QSPI_MAX_SCLK_HZ, QSPI_FIFO_DEPTH);
+    if (rc) {
+        return rc;
+    }
+
+    rc = spi_nor_init(nor, ssi);
+    if (rc) {
+        /* The controller is up even though no flash answered. */
+        dwc_ssi_shutdown(ssi);
+        return rc;
+    }
+    printf("Initialized %u MB NOR flash, JEDEC ID 0x%06x\n",
+           (unsigned int)(nor->size >> 20), (unsigned int)nor->jedec_id);
+    return 0;
+}
+
+static struct dwc_ssi ssi;
+static struct spi_nor nor;
+
+static int load_nor_image(void *ctx, uint32_t off, void *buf, size_t len)
+{
+    return spi_nor_read((const struct spi_nor *)ctx, off, buf, len);
+}
+
+static int load_image_nor(const struct boot_image *image)
+{
+    int rc, shutdown_rc;
+    static bool nor_initialized = false;
+
+    if (!nor_initialized) {
+        rc = nor_init(&ssi, &nor);
+        if (rc) {
+            printf("NOR init failed rc=%d\n", rc);
+            return rc;
+        }
+        nor_initialized = true;
+    }
+
+    rc = boot_image_load_image(image, &load_nor_image, &nor,
+                               platform_atlantis_is_bootrom());
+    if (rc) {
+        printf("failed to load boot_images from nor rc=%d\n", rc);
+    }
+
+    /* shutdown the QSPI controller even if the load failed */
+    shutdown_rc = dwc_ssi_shutdown(&ssi);
+    return rc ? rc : shutdown_rc;
+}
+
+int platform_atlantis_load_boot_image(const struct boot_image *image)
+{
+    int rc;
+    if (!image) {
+        return -EINVAL;
+    }
+
+    if (g_boot_mode == SOC_RCPU_BOOT_MODE_SEL_NOR) {
+        rc = load_image_nor(image);
+    } else {
+        /* Only NOR boot is currently supported in HILT */
+        rc = -EINVAL;
+    }
+
+    return rc;
 }
