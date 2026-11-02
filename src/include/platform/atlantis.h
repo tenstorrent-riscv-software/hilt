@@ -8,4 +8,7 @@
 
 int platform_atlantis_init(void);
 
+/* True when running from the mask ROM as the bootrom, false when loaded into SRAM */
+bool platform_atlantis_is_bootrom(void);
+
 #endif /* __PLATFORM_ATLANTIS_H__ */
