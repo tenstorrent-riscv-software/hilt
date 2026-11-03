@@ -1,3 +1,5 @@
+![HILT logo](img/logo.png)
+
 # HILT
 
 Firmware for the Tenstorrent Atlantis SoC System Management Controller
