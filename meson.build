@@ -70,6 +70,7 @@ if meson.is_cross_build()
     'src/arch/riscv/start.S',
     'src/console.c',
     'src/drivers/serial/dwc_apb_uart.c',
+    'src/platform/atlantis.c',
     'src/main.c',
     'src/time.c',
     build_info_c,
