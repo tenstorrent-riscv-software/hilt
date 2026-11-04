@@ -74,6 +74,7 @@ if meson.is_cross_build()
     'src/arch/riscv/header.S',
     'src/arch/riscv/start.S',
     'src/drivers/serial/uart_8250.c',
+    'src/drivers/serial/uart_dw_16550.c',
     'src/main.c',
     'src/timer.c',
     build_info_c,
