@@ -17,6 +17,7 @@ project(
 
 hilt_inc = include_directories(
     'src',
+    'src/include',
     'src/arch/riscv/include',
 )
 if meson.is_cross_build()
@@ -68,6 +69,7 @@ if meson.is_cross_build()
     'src/arch/riscv/header.S',
     'src/arch/riscv/start.S',
     'src/main.c',
+    'src/time.c',
     build_info_c,
   ]
 
