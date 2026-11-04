@@ -68,6 +68,7 @@ if meson.is_cross_build()
   sources = [
     'src/arch/riscv/header.S',
     'src/arch/riscv/start.S',
+    'src/drivers/serial/dwc_apb_uart.c',
     'src/main.c',
     'src/time.c',
     build_info_c,
