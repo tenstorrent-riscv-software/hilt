@@ -15,8 +15,14 @@ project(
   ],
 )
 
+# src/arch/riscv/include/csr.h does not support -O0, plain is -O0.
+if get_option('optimization') in ['0', 'plain']
+  error('-O0 is not supported, minimum of -O1 is required.')
+endif
+
 hilt_inc = include_directories(
     'src',
+    'src/include',
     'src/arch/riscv/include',
 )
 if meson.is_cross_build()
@@ -68,6 +74,7 @@ if meson.is_cross_build()
     'src/arch/riscv/header.S',
     'src/arch/riscv/start.S',
     'src/main.c',
+    'src/timer.c',
     build_info_c,
   ]
 
