@@ -18,6 +18,7 @@ Build outputs are produced in the build/ directory:
 
 - `hilt.bin` / `hilt.elf` - the firmware targeting RCPU SRAM.
 - `hilt-rom.bin` / `hilt-rom.elf` - bootrom image
+- `hilt-rom_h.hex` / `hilt-rom_l.hex` - bootrom memory files for HAPs
 
 ## Contributing
 

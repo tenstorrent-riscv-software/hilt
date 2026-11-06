@@ -25,6 +25,10 @@ hilt_inc = include_directories(
     'src/include',
     'src/arch/riscv/include',
 )
+
+python = find_program('python3')
+bin2hex = files('tools/bin2hex.py')
+
 if meson.is_cross_build()
   # ---- Firmware ----
   cc = meson.get_compiler('c')
@@ -118,4 +122,12 @@ if meson.is_cross_build()
       build_by_default: true,
     )}
   endforeach
+
+  custom_target(
+    'hilt-rom.mem',
+    input: [bin2hex, hilt_bin['rom']],
+    output: ['hilt-rom_h.hex', 'hilt-rom_l.hex'],
+    command: [python, '@INPUT0@', '@INPUT1@', '@OUTPUT0@', '@OUTPUT1@'],
+    build_by_default: true,
+  )
 endif
