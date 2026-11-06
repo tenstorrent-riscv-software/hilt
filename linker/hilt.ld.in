@@ -1,0 +1,103 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: 2025-2026 Tenstorrent USA, Inc.
+ *
+ * HILT linker script template. meson's configure_file() instantiates it once
+ * per image by substituting the region names:
+ *
+ *   hilt-sram.ld  TEXT=sram  DATA=sram   DATA_LMA=sram
+ *                The FSBL image: the ZSBL loads it into the RCPU sram
+ *
+ *   hilt-rom.ld  TEXT=rom  DATA=sram  DATA_LMA=rom
+ *                The bootrom image: code and rodata execute in mask ROM.
+ *                .data is linked and copied into the RCPU SRAM
+ *
+ */
+
+OUTPUT_ARCH(riscv)
+ENTRY(_start)
+
+__stack_size = 64K;
+
+MEMORY
+{
+    /* Mask ROM: reset entry, 256 KB. */
+    rom  (rx)  : ORIGIN = 0x00040000, LENGTH = 256K
+
+    /*
+     * RCPU SRAM is 1 MB at 0x20100000, minus its last 256 KB
+     * (0x201c0000 up), which is the ZSBL/bootrom data area. Limit HILT
+     * boot to 256K and leave the rest for HILT runtime.
+     */
+    sram  (rwx) : ORIGIN = 0x20100000, LENGTH = 256K
+
+    /* Bootrom data SRAM: that top 256 KB minus the 4 KB postcode region. */
+    bootrom_sram (rw)  : ORIGIN = 0x201c0000, LENGTH = 252K
+}
+
+REGION_ALIAS("REGION_TEXT",     @TEXT_REGION@)
+REGION_ALIAS("REGION_DATA",     @DATA_REGION@)
+REGION_ALIAS("REGION_DATA_LMA", @DATA_LMA_REGION@)
+
+SECTIONS
+{
+    /* 512-byte SIMG header placeholder; see src/arch/riscv/header.S. */
+    .binary_header : {
+        KEEP(*(.binary_header))
+    } > REGION_TEXT
+
+    .text : {
+        *(.text._start)
+        *(.text*)
+    } > REGION_TEXT
+
+    /* Build banner, greppable in the binary. */
+    .build_info : {
+        KEEP(*(.build_info))
+    } > REGION_TEXT
+
+    . = ALIGN(4);
+    .rodata : {
+        PROVIDE(__rodata_start = .);
+        *(.rodata*)
+        *(.srodata*)
+    } > REGION_TEXT
+    . = ALIGN(4);
+    PROVIDE(__rodata_end = .);
+    PROVIDE(__rodata_lma = LOADADDR(.rodata));
+
+    .data : {
+        PROVIDE(__data_start = .);
+        . = ALIGN(8);
+        __global_pointer$ = . + 0x800;
+        *(.sdata*)
+        *(.data*)
+    } > REGION_DATA AT> REGION_DATA_LMA
+    . = ALIGN(4);
+    PROVIDE(__data_end = .);
+    PROVIDE(__data_lma = LOADADDR(.data));
+
+    .bss (NOLOAD) : {
+        PROVIDE(__bss_start = .);
+        *(.sbss*)
+        *(.bss*)
+        *(COMMON)
+        . = ALIGN(4);
+    } > REGION_DATA
+    . = ALIGN(4);
+    PROVIDE(__bss_end = .);
+
+    .heap (NOLOAD) : {
+        . = ALIGN(16);
+        __heap_start = .;
+        . = ORIGIN(REGION_DATA) + LENGTH(REGION_DATA) - __stack_size;
+        __heap_end = .;
+    } > REGION_DATA
+
+    __stack_top = ORIGIN(REGION_DATA) + LENGTH(REGION_DATA);
+}
+
+ASSERT(SIZEOF(.binary_header) == 0x200,
+       "binary header must be exactly 512 bytes")
+ASSERT(_start == ORIGIN(REGION_TEXT) + 0x200,
+       "_start must sit at image base + 0x200 (SIMG trampoline target)")

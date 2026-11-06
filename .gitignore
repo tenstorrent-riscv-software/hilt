@@ -1,0 +1,5 @@
+build/
+subprojects/picolibc-1.8.11/
+subprojects/packagecache/
+subprojects/.wraplock
+tags
