@@ -12,6 +12,8 @@ project(
     'warning_level=2',
     'werror=true',
     'buildtype=minsize',
+    'default_library=static',
+    'b_staticpic=false',
   ],
 )
 
@@ -19,6 +21,11 @@ project(
 if get_option('optimization') in ['0', 'plain']
   error('-O0 is not supported, minimum of -O1 is required.')
 endif
+
+cc = meson.get_compiler('c')
+
+# libfdt/meson.build is upstream dtc's and expects this from the dtc tree
+wheel_only = true
 
 hilt_inc = include_directories(
     'src',
@@ -36,7 +43,6 @@ mknor = files('tools/mknor.py')
 
 if meson.is_cross_build()
   # ---- Firmware ----
-  cc = meson.get_compiler('c')
 
   # Header hygiene: the distro toolchain puts newlib headers on the default
   # include path; use -nostdinc and re-add only GCC's internal headers.
@@ -82,6 +88,9 @@ if meson.is_cross_build()
 
   # libgcc must follow libc.a; gcc's driver picks the rv32imafdc/ilp32d multilib.
   libgcc_dep = declare_dependency(link_args: ['-lgcc'])
+
+  # Vendored libfdt, needs libc_dep for picolibc's headers
+  subdir('libfdt')
 
   # Link to maskrom for bootrom and sram for first stage bootloader
   linker_variants = {
@@ -130,7 +139,8 @@ if meson.is_cross_build()
       name + '.elf',
       sources,
       include_directories: hilt_inc,
-      dependencies: [libc_dep, libgcc_dep],
+      # libfdt.a needs string functions from libc.a, so it links first.
+      dependencies: [libfdt_dep, libc_dep, libgcc_dep],
       link_args: [
         '-T' + linker_script.full_path(),
         '-Wl,-Map=' + name + '.map',
@@ -244,4 +254,6 @@ else
   )
 
   test('simg', test_simg, args: [golden_simg])
+
+  subdir('libfdt')
 endif
