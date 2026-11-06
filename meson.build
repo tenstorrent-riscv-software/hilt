@@ -118,4 +118,20 @@ if meson.is_cross_build()
       build_by_default: true,
     )}
   endforeach
+
+  bin2hex = find_program('scripts/bin2hex')
+  sh = find_program('sh')
+  rom_load_addr = '0x00040000'
+  custom_target(
+    'hilt-rom.mem',
+    input: hilt_bin['rom'],
+    output: ['hilt-rom_h.hex', 'hilt-rom_l.hex'],
+    command: [
+      sh, '-c',
+      '"$0" -s -o "$1" "$2" "$3" >/dev/null && cp "$1/hex-$3_h.hex" "$4" && cp "$1/hex-$3_l.hex" "$5"',
+      bin2hex, '@PRIVATE_DIR@', '@INPUT@', rom_load_addr, '@OUTPUT0@', '@OUTPUT1@',
+    ],
+    depend_files: files('scripts/bin2hex'),
+    build_by_default: true,
+  )
 endif

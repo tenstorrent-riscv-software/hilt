@@ -1,0 +1,254 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2025-2026 Tenstorrent USA, Inc.
+#
+# bin2hex - turn a raw binary image into plain-text hex files that a memory
+# model or boot ROM loader can read directly ($readmemh style).
+#
+# Usage: bin2hex [-s] [-o <dir>] [-b <n>] <bin_file> <address>
+#
+# For <addr> = the address normalised to 0x form, the output directory gets:
+#   bin-<addr>.bin        byte-for-byte copy of the input
+#   hex-<addr>.hex        whole image, one line per <n> bytes (default 8), the
+#                         bytes of each line in reverse file order, i.e. one
+#                         little-endian word written MSB first
+#   hex-<addr>.hex.0..9   the full hex file cut into chunks of 8192 lines
+#   hex-<addr>_h.hex      (-s) upper 8 bytes of every 16-byte group
+#   hex-<addr>_l.hex      (-s) lower 8 bytes of every 16-byte group
+#
+# Linux only; needs od, awk, split, cp and mkdir. No other runtime required.
+
+set -eu
+# pipefail is not in every POSIX sh (dash gained it late); use it when present.
+(set -o pipefail) 2>/dev/null && set -o pipefail
+
+LINES_PER_CHUNK=8192 # lines in each hex-<addr>.hex.N chunk
+SPLIT_GROUP_BYTES=16 # group size for the _h/_l files (not affected by -b)
+
+prog=$(basename "$0")
+
+usage() {
+	cat <<USAGE
+Usage: ${prog} [OPTIONS] <bin_file> <address>
+
+Convert a raw binary image into hex text files for memory initialisation.
+
+Arguments:
+  bin_file              Path to the binary image to convert
+  address               Load address in hex (e.g. 0x00040000 or 00040000);
+                        used verbatim as a label in the output file names
+
+Options:
+  -s, --split-lh        Also write the high/low half files (_h.hex, _l.hex)
+  -o, --output <dir>    Output directory (default: <bin_file dir>/mem)
+  -b, --bytes-per-line <n>
+                        Bytes per line in the full hex file (default: 8)
+  -h, --help            Show this help and exit
+
+Output files (in the output directory, <addr> = normalised address):
+  bin-<addr>.bin        Byte-for-byte copy of the input
+  hex-<addr>.hex        Full image, one reversed-byte line per <n> bytes
+  hex-<addr>.hex.0 ...  The full hex file cut into chunks of ${LINES_PER_CHUNK} lines
+  hex-<addr>_h.hex      Upper half of each 16-byte group (with -s)
+  hex-<addr>_l.hex      Lower half of each 16-byte group (with -s)
+
+Examples:
+  ${prog} app.bin 0x00040000
+  ${prog} -s -o build/mem app.bin 00040000
+  ${prog} app.bin 0x00040000 -b 16
+USAGE
+}
+
+# Error message followed by the usage text; exit 1.
+usage_error() {
+	echo "Error: $1"
+	echo
+	usage
+	exit 1
+}
+
+# Error message only; exit 1.
+die() {
+	echo "Error: $1"
+	exit 1
+}
+
+# Reverse the bytes of each line of a text hex dump produced by od. Reads
+# "xx xx xx ..." rows on stdin and writes one uppercase line per <bytes_per_line>
+# bytes, the bytes within a line in reverse file order. A trailing partial
+# group is written unpadded.
+reverse_hex() {
+	awk -v n="$1" '
+		{
+			for (i = 1; i <= NF; i++) {
+				line = toupper($i) line
+				if (++count == n) {
+					print line
+					line = ""
+					count = 0
+				}
+			}
+		}
+		END {
+			if (count > 0)
+				print line
+		}
+	'
+}
+
+# Dump a binary file as reversed-byte hex lines of <bytes_per_line> bytes.
+hex_lines() {
+	LC_ALL=C od -An -v -tx1 -- "$1" | reverse_hex "$2"
+}
+
+# Write the _h/_l split files from the image. Each 16-byte group is rendered as
+# one reversed 32-character line, left-padded with zeros if short, and cut in
+# two: first 16 characters to the _h file, last 16 to the _l file.
+write_split_lh() {
+	hex_lines "$1" "${SPLIT_GROUP_BYTES}" | awk -v hfile="$2" -v lfile="$3" '
+		{
+			line = $0
+			while (length(line) < 32)
+				line = "0" line
+			print substr(line, 1, 16) > hfile
+			print substr(line, 17, 16) > lfile
+		}
+	'
+}
+
+# Strip an optional 0x prefix from the address. The digits are kept verbatim
+# (never parsed as a number) so leading zeros are preserved.
+address_digits() {
+	digits=${1#0x}
+	echo "${digits#0X}"
+}
+
+main() {
+	split_lh=0
+	output_dir=
+	bytes_per_line=8
+	bin_file=
+	address=
+	npos=0
+
+	# Options may appear before or after the positional arguments.
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		-s | --split-lh)
+			split_lh=1
+			;;
+		-h | --help)
+			usage
+			exit 0
+			;;
+		-o | --output)
+			[ $# -ge 2 ] || usage_error "Option $1 requires a directory"
+			output_dir=$2
+			shift
+			;;
+		--output=*)
+			output_dir=${1#--output=}
+			;;
+		-b | --bytes-per-line)
+			[ $# -ge 2 ] || usage_error "Option $1 requires a value"
+			bytes_per_line=$2
+			shift
+			;;
+		--bytes-per-line=*)
+			bytes_per_line=${1#--bytes-per-line=}
+			;;
+		--)
+			shift
+			while [ $# -gt 0 ]; do
+				set_positional "$1"
+				shift
+			done
+			break
+			;;
+		-*)
+			usage_error "Unknown option: $1"
+			;;
+		*)
+			set_positional "$1"
+			;;
+		esac
+		shift
+	done
+
+	[ ${npos} -ge 2 ] || usage_error "Missing required arguments: <bin_file> <address>"
+
+	case "${bytes_per_line}" in
+	'' | *[!0-9]* | 0*)
+		usage_error "Bytes per line must be a positive integer: ${bytes_per_line}"
+		;;
+	esac
+
+	# Validate inputs before anything is written.
+	[ -f "${bin_file}" ] || usage_error "Binary file not found: ${bin_file}"
+	case "$(address_digits "${address}")" in
+	'' | *[!0-9A-Fa-f]*)
+		die "Invalid hex address: ${address}"
+		;;
+	esac
+	address="0x$(address_digits "${address}")"
+
+	# Platform check comes after argument validation so usage errors are
+	# reported the same way everywhere.
+	case "$(uname -s)" in
+	Linux*) ;;
+	*) die "This tool only runs on Linux" ;;
+	esac
+
+	out_dir=${output_dir:-$(dirname -- "${bin_file}")/mem}
+	bin_out="${out_dir}/bin-${address}.bin"
+	hex_base="${out_dir}/hex-${address}"
+	hex_out="${hex_base}.hex"
+
+	mkdir -p -- "${out_dir}"
+	cp -- "${bin_file}" "${bin_out}"
+
+	echo "Converting ${bin_file} to hex..."
+	hex_lines "${bin_out}" "${bytes_per_line}" >"${hex_out}"
+
+	if [ ${split_lh} -eq 1 ]; then
+		write_split_lh "${bin_out}" "${hex_base}_h.hex" "${hex_base}_l.hex"
+	fi
+
+	# A single-digit suffix caps the series at ten chunks; split fails (after
+	# writing the first ten) when the image needs more.
+	echo "Splitting hex file into chunks of ${LINES_PER_CHUNK} lines..."
+	split -l "${LINES_PER_CHUNK}" -d -a 1 -- "${hex_out}" "${hex_out}."
+
+	nchunks=0
+	for f in "${hex_out}".[0-9]; do
+		[ -e "$f" ] && nchunks=$((nchunks + 1))
+	done
+
+	echo
+	echo "Conversion complete"
+	echo "Output directory: ${out_dir}"
+	echo "Generated files:"
+	echo "  - bin-${address}.bin (binary copy)"
+	echo "  - hex-${address}.hex (${bytes_per_line} bytes per line)"
+	if [ ${nchunks} -gt 0 ]; then
+		echo "  - hex-${address}.hex.0 through hex-${address}.hex.$((nchunks - 1)) (${nchunks} chunk files)"
+	else
+		echo "  - no chunk files (empty image)"
+	fi
+	if [ ${split_lh} -eq 1 ]; then
+		echo "  - hex-${address}_h.hex (upper half of each 16-byte group)"
+		echo "  - hex-${address}_l.hex (lower half of each 16-byte group)"
+	fi
+}
+
+# Collect a positional argument; exactly two are allowed.
+set_positional() {
+	npos=$((npos + 1))
+	case ${npos} in
+	1) bin_file=$1 ;;
+	2) address=$1 ;;
+	*) usage_error "Too many arguments: $1" ;;
+	esac
+}
+
+main "$@"
