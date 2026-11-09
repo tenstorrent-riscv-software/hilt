@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: Apache-2.0
+
+if SOC_TT_ATLANTIS_RCPU
+
+config PMP_SLOTS
+	default 16
+
+config NUM_IRQS
+	default 144
+
+config RISCV_MCAUSE_EXCEPTION_MASK
+	default 0xFFF
+
+config CLIC_PARAMETER_INTCTLBITS
+	default 4
+
+config RISCV_HART_MASK
+	default 0
+
+config SYS_CLOCK_HW_CYCLES_PER_SEC
+	default $(dt_nodelabel_int_prop,mtimer,clock-frequency)
+
+endif # SOC_TT_ATLANTIS_RCPU

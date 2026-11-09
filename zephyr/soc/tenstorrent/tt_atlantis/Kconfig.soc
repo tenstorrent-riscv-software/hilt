@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config SOC_TT_ATLANTIS
+	bool
+
+config SOC_TT_ATLANTIS_RCPU
+	bool
+	select SOC_TT_ATLANTIS
+
+config SOC
+	default "tt_atlantis" if SOC_TT_ATLANTIS

@@ -1,0 +1,214 @@
+/*
+ * Copyright (c) 2026 Tenstorrent
+ *
+ * RCPU Rondel-based RV32 CPU on the Tenstorrent Atlantis SoC
+ */
+
+#include <mem.h>
+#include <zephyr/dt-bindings/i2c/i2c.h>
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu0: cpu@0 {
+			device_type = "cpu";
+			compatible = "tenstorrent,rondel", "riscv";
+			reg = <0>;
+			riscv,isa-base = "rv32i";
+			riscv,isa-extensions = "i", "m", "a", "c", "zicsr", "zifencei",
+					       "zicntr", "zcb", "zba", "zbb", "zbc", "zbs";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			/* CLIC v0.9 draft */
+			clic0: interrupt-controller@e000e000 {
+				compatible = "riscv,clic";
+				#address-cells = <0>;
+				#interrupt-cells = <2>;
+				interrupt-controller;
+				reg = <0xe000e000 0x2000>;
+			};
+		};
+	};
+
+	itcm: memory@0 {
+		device_type = "memory";
+		reg = <0x00000000 DT_SIZE_K(256)>;
+	};
+
+	dtcm: memory@20000000 {
+		device_type = "memory";
+		reg = <0x20000000 DT_SIZE_K(256)>;
+	};
+
+	smn_sram: memory@20100000 {
+		device_type = "memory";
+		reg = <0x20100000 DT_SIZE_M(1)>;
+	};
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+		ranges;
+
+		mtimer: timer@e002bff8 {
+			compatible = "riscv,machine-timer";
+			interrupts-extended = <&clic0 7 1>;
+			reg = <0xe002bff8 0x8 0xe0024000 0x8>;
+			reg-names = "mtime", "mtimecmp";
+			clock-frequency = <6250000>;
+		};
+
+		uart0: serial@48100000 {
+			compatible = "ns16550";
+			reg = <0x48100000 0x100>;
+			reg-shift = <2>;
+			clock-frequency = <200000000>;
+			interrupt-parent = <&clic0>;
+			interrupts = <54 1>;
+			status = "disabled";
+		};
+
+		uart1: serial@48110000 {
+			compatible = "ns16550";
+			reg = <0x48110000 0x100>;
+			reg-shift = <2>;
+			clock-frequency = <200000000>;
+			interrupt-parent = <&clic0>;
+			interrupts = <55 1>;
+			status = "disabled";
+		};
+
+		uart2: serial@48120000 {
+			compatible = "ns16550";
+			reg = <0x48120000 0x100>;
+			reg-shift = <2>;
+			clock-frequency = <200000000>;
+			interrupt-parent = <&clic0>;
+			interrupts = <56 1>;
+			status = "disabled";
+		};
+
+		uart3: serial@48130000 {
+			compatible = "ns16550";
+			reg = <0x48130000 0x100>;
+			reg-shift = <2>;
+			clock-frequency = <200000000>;
+			interrupt-parent = <&clic0>;
+			interrupts = <57 1>;
+			status = "disabled";
+		};
+
+		uart4: serial@48140000 {
+			compatible = "ns16550";
+			reg = <0x48140000 0x100>;
+			reg-shift = <2>;
+			clock-frequency = <200000000>;
+			interrupt-parent = <&clic0>;
+			interrupts = <58 1>;
+			status = "disabled";
+		};
+
+		i2c0: i2c@48040000 {
+			compatible = "snps,designware-i2c";
+			reg = <0x48040000 0x100>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <I2C_BITRATE_STANDARD>;
+			interrupt-parent = <&clic0>;
+			interrupts = <49 1>;
+			status = "disabled";
+		};
+
+		i2c1: i2c@48050000 {
+			compatible = "snps,designware-i2c";
+			reg = <0x48050000 0x100>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <I2C_BITRATE_STANDARD>;
+			interrupt-parent = <&clic0>;
+			interrupts = <50 1>;
+			status = "disabled";
+		};
+
+		i2c2: i2c@48060000 {
+			compatible = "snps,designware-i2c";
+			reg = <0x48060000 0x100>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <I2C_BITRATE_STANDARD>;
+			interrupt-parent = <&clic0>;
+			interrupts = <51 1>;
+			status = "disabled";
+		};
+
+		i2c3: i2c@48070000 {
+			compatible = "snps,designware-i2c";
+			reg = <0x48070000 0x100>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <I2C_BITRATE_STANDARD>;
+			interrupt-parent = <&clic0>;
+			interrupts = <52 1>;
+			status = "disabled";
+		};
+
+		i2c4: i2c@48080000 {
+			compatible = "snps,designware-i2c";
+			reg = <0x48080000 0x100>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <I2C_BITRATE_STANDARD>;
+			interrupt-parent = <&clic0>;
+			interrupts = <53 1>;
+			status = "disabled";
+		};
+
+		/* DesignWare DW_apb_ssi */
+		spi0: spi@48000000 {
+			compatible = "snps,designware-spi";
+			reg = <0x48000000 0x100>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			interrupt-parent = <&clic0>;
+			interrupts = <59 1>;
+			status = "disabled";
+		};
+
+		spi1: spi@48010000 {
+			compatible = "snps,designware-spi";
+			reg = <0x48010000 0x100>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			interrupt-parent = <&clic0>;
+			interrupts = <60 1>;
+			status = "disabled";
+		};
+
+		spi2: spi@48020000 {
+			compatible = "snps,designware-spi";
+			reg = <0x48020000 0x100>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			interrupt-parent = <&clic0>;
+			interrupts = <61 1>;
+			status = "disabled";
+		};
+
+		spi3: spi@48030000 {
+			compatible = "snps,designware-spi";
+			reg = <0x48030000 0x100>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			interrupt-parent = <&clic0>;
+			interrupts = <62 1>;
+			status = "disabled";
+		};
+	};
+};

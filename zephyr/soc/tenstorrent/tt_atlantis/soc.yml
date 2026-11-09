@@ -1,0 +1,4 @@
+socs:
+  - name: tt_atlantis
+    cpuclusters:
+      - name: rcpu
