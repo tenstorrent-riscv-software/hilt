@@ -1,0 +1,12 @@
+identifier: tt_atlantis_evb/tt_atlantis/rcpu
+name: Tenstorrent Atlantis EVB (RCPU)
+type: mcu
+arch: riscv
+vendor: tenstorrent
+toolchain:
+  - zephyr
+  - cross-compile
+ram: 512
+supported:
+  - uart
+  - i2c

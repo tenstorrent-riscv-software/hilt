@@ -1,0 +1,6 @@
+board:
+  name: tt_atlantis_evb
+  full_name: Tenstorrent Atlantis EVB
+  vendor: tenstorrent
+  socs:
+    - name: tt_atlantis
