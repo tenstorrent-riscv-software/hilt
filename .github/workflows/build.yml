@@ -12,39 +12,73 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    # Zephyr's CI image: Ubuntu 24.04 with the Zephyr SDK under
+    # /opt/toolchains and a clone of the Zephyr project tree under
+    # /repo-cache, so neither has to be downloaded. The tag matches what
+    # Zephyr's own CI uses at the revision pinned in west.yml.
+    container:
+      image: ghcr.io/zephyrproject-rtos/ci-repo-cache:v0.29.4.20260912
+
+    env:
+      CMAKE_PREFIX_PATH: /opt/toolchains
+      ZEPHYR_TOOLCHAIN_VARIANT: zephyr
+
     steps:
+      # The checkout is the west manifest repository and west makes its
+      # parent the workspace, so the checkout goes in a subdirectory.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          path: hilt
 
-      - name: Install toolchain and build tools
+      - name: Detect Zephyr SDK
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            gcc-riscv64-unknown-elf ninja-build python3 pipx
-          pipx install 'meson>=1.4'
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          SDK_PATH=$(find /opt/toolchains -maxdepth 1 -type d -name "zephyr-sdk-*" | head -n 1)
+          if [ -z "$SDK_PATH" ]; then
+            echo "Error: Could not find Zephyr SDK in /opt/toolchains"
+            exit 1
+          fi
+          echo "ZEPHYR_SDK_INSTALL_DIR=$SDK_PATH" >> "$GITHUB_ENV"
+
+      # The boot stage keeps the distro cross compiler; the image only
+      # carries the Zephyr SDK. meson is not in the image either.
+      - name: Install boot stage toolchain and meson
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends gcc-riscv64-unknown-elf
+          python3 -m pip install --break-system-packages 'meson>=1.4'
+
+      - name: Initialise west workspace
+        run: |
+          rm -rf .west
+          west init -l hilt
+          west update --path-cache /repo-cache/zephyrproject --narrow
 
       - name: Configure
+        working-directory: hilt
         run: meson setup build --cross-file cross/riscv32-rondel.ini
 
       - name: Build
+        working-directory: hilt
         run: ninja -C build
 
       - name: Summarise
+        working-directory: hilt
         run: |
           riscv64-unknown-elf-size build/hilt.elf build/hilt-rom.elf
-          ls -l build/hilt.bin build/hilt-rom.bin
+          ls -l build/hilt.bin build/hilt-rom.bin build/hilt_runtime.bin
 
       - name: Upload images
         uses: actions/upload-artifact@v4
         with:
           name: hilt-images
           path: |
-            build/hilt.elf
-            build/hilt.bin
-            build/hilt.map
-            build/hilt-rom.elf
-            build/hilt-rom.bin
-            build/hilt-rom.map
+            hilt/build/hilt.elf
+            hilt/build/hilt.bin
+            hilt/build/hilt.map
+            hilt/build/hilt-rom.elf
+            hilt/build/hilt-rom.bin
+            hilt/build/hilt-rom.map
+            hilt/build/hilt_runtime.bin
+            hilt/build/nor.img
           if-no-files-found: error
