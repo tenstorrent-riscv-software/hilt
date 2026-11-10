@@ -22,6 +22,17 @@ Build outputs are produced in the build/ directory:
 - `hilt-rom.bin` / `hilt-rom.elf` - bootrom image
 - `hilt-rom_h.hex` / `hilt-rom_l.hex` - bootrom memory files for HAPs
 
+## HILT boot stage
+The boot stage is a bare-metal C program. The boot stage is loaded
+directly by the bootrom.
+
+## HILT runtime stage
+
+The runtime stage which runs after the boot stage is a Zephyr application:
+The application is in src/runtime and built for the `tt_atlantis_evb/tt_atlantis/rcpu`
+board target. The SoC and board definitions are under zephyr/, following
+the Zephyr directory structure for new SoCs and boards.
+
 ## Host unit tests
 
 Unit tests can be run natively on the host running:
