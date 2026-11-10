@@ -94,6 +94,7 @@ if meson.is_cross_build()
   ]
 
   objcopy = find_program('objcopy')
+  sh = find_program('sh')
 
   # The first stage bootloader image in sram image keeps the plain 'hilt' name.
   # The bootrom image is suffixed with _rom
@@ -140,7 +141,6 @@ if meson.is_cross_build()
   )
 
   bin2hex = find_program('scripts/bin2hex')
-  sh = find_program('sh')
   rom_load_addr = '0x00040000'
   custom_target(
     'hilt-rom.mem',
@@ -155,15 +155,63 @@ if meson.is_cross_build()
     build_by_default: true,
   )
 
-  # Placeholder for the runtime stage
+  # Built hilt runtime, a Zephyr applicaiton built using west. First setup
+  # the west workspace, one level up (pwd/..).
+  fs = import('fs')
+
+  # First check that west is installed.
+  west = find_program('west', required: false)
+  if not west.found()
+    error('west is required for the Zephyr runtime: pipx install west')
+  endif
+
+  # Check if a workspace already exists and confirm it is for this project. Do
+  # not overwrite a workspace for a different project, just error out.
+  west_base = run_command(west, 'list', '-f', '{abspath}', 'zephyr',
+                          check: false, capture: true)
+  if west_base.returncode() != 0
+    repo_dir = fs.name(meson.current_source_dir())
+    if fs.is_dir('../.west')
+      error('the west workspace in the parent directory does not use this ' +
+            'checkout as its manifest.')
+    endif
+
+    # Create a workspace if one doesn't exist
+    message('No west workspace found: initialising one')
+    west_init = run_command(west, 'init', '-l', '.', check: false,
+                            capture: false)
+    if west_init.returncode() != 0
+      error('west init failed')
+    endif
+    west_update = run_command(west, 'update', '--narrow', check: false,
+                              capture: false)
+    if west_update.returncode() != 0
+      error('west update failed; fix the cause and rerun meson setup (or ' +
+            '"west update" from here) to complete the workspace')
+    endif
+    west_base = run_command(west, 'list', '-f', '{abspath}', 'zephyr',
+                            check: true, capture: true)
+  endif
+  zephyr_base = west_base.stdout().strip()
+  message('Zephyr runtime from ' + zephyr_base)
+
+  # Build the HILT runtime application using the Zephyr SDK and Zephyr's own CMake.
+  zephyr_board = 'tt_atlantis_evb/tt_atlantis/rcpu'
+  zephyr_app = meson.current_source_dir()
+  zephyr_build = meson.current_build_dir() / 'zephyr'
   hilt_runtime = custom_target(
-    'hilt_runtime-placeholder.bin',
-    output: 'hilt_runtime-placeholder.bin',
+    'hilt_runtime.bin',
+    output: 'hilt_runtime.bin',
     command: [
-      python, '-c',
-      'import sys; open(sys.argv[1], "wb").write(b"HILT runtime placeholder\\0" * 160)',
+      sh, '-c',
+      '"$0" build -b "$1" -d "$2" "$3" -- "$4" >/dev/null && cp "$2/zephyr/zephyr.bin" "$5"',
+      west, zephyr_board, zephyr_build, zephyr_app,
+      '-DZEPHYR_TOOLCHAIN_VARIANT=zephyr',
       '@OUTPUT@',
     ],
+    # west/ninja track the Zephyr sources themselves; always let them run
+    build_always_stale: true,
+    console: true,
   )
 
   # For now platform-fw is just hilt runtime

@@ -1,0 +1,13 @@
+manifest:
+  remotes:
+    - name: zephyrproject
+      url-base: https://github.com/zephyrproject-rtos
+
+  projects:
+    - name: zephyr
+      remote: zephyrproject
+      revision: v4.5.0
+      west-commands: scripts/west-commands.yml
+
+  self:
+    path: hilt

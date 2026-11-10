@@ -7,7 +7,11 @@ Firmware for the Tenstorrent Atlantis SoC System Management Controller
 
 ## Building
 
-Requires `riscv64-unknown-elf-gcc`, meson, ninja, and Python 3.
+Requires `riscv64-unknown-elf-gcc` (for the boot stage), the Zephyr SDK's
+RISC-V toolchain (for the runtime, see below), meson, ninja, and Python 3.
+
+Both the boot and runtime stage can be built through meson. For the
+runtime stage, meson will call into west to build Zephyr.
 
 ```sh
 meson setup build --cross-file cross/riscv32-rondel.ini
@@ -22,9 +26,23 @@ Build outputs are produced in the build/ directory:
 - `hilt-rom.bin` / `hilt-rom.elf` - bootrom image
 - `hilt-rom_h.hex` / `hilt-rom_l.hex` - bootrom memory files for HAPs
 
+### Toolchains
+
+The boot stage is compiled with the distro `riscv64-unknown-elf-gcc` named
+in `cross/riscv32-rondel.ini`. The Zephyr runtime is compiled with the
+`riscv64-zephyr-elf` toolchain from the [Zephyr SDK](
+https://github.com/zephyrproject-rtos/sdk-ng/releases), version 1.0.1.
+CI builds inside Zephyr's CI container image, which ships the SDK preinstalled;
+locally, install the minimal SDK bundle for your host with just that toolchain:
+
+```sh
+tar xf zephyr-sdk-1.0.1_linux-x86_64_minimal.tar.xz -C ~
+~/zephyr-sdk-1.0.1/setup.sh -t riscv64-zephyr-elf -c
+```
+
 ## HILT boot stage
-The boot stage is a bare-metal C program. The boot stage is loaded
-directly by the bootrom.
+The boot stage is a bare-metal C program that can be compiled for
+maskrom or SRAM.
 
 ## HILT runtime stage
 
