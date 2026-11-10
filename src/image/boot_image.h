@@ -15,7 +15,14 @@ struct boot_image {
     uintptr_t load_addr;         /* address the SIMG is loaded to */
     size_t max_size;             /* header + payload + signature limit */
     uint32_t nor_offset;         /* byte offset of the SIMG in NOR flash */
+    bool exec;                   /* jump to this image once all are loaded */
 };
+
+/* Get the entry point for a boot image */
+static inline uintptr_t boot_image_entry(const struct boot_image *image)
+{
+    return image->load_addr;
+}
 
 /*
  * Fn ptr to read an image from the boot medium

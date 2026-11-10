@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <cpu.h>
+#include <csr.h>
 #include <image/boot_image.h>
 #include <platform/atlantis.h>
 
@@ -13,6 +14,7 @@ extern const char g_build_banner[];
 int main(void)
 {
     const struct boot_image *images;
+    const struct boot_image *next = NULL;
     size_t count;
     bool is_bootrom;
     const char *target = "SRAM";
@@ -37,11 +39,20 @@ int main(void)
         rc = platform_atlantis_load_boot_image(&images[i]);
         if (rc) {
             printf("failed to load %s rc=%d\n", images[i].name, rc);
+        } else if (images[i].exec) {
+            next = &images[i];
         }
     }
 
+    if (next == NULL) {
+        printf("HILT: nothing to run, idling\n");
+        for (;;)
+            cpu_idle();
+    }
 
+    printf("HILT: handoff to %s at 0x%08x\n", next->name,
+           (unsigned)boot_image_entry(next));
     printf("HILT: complete\n");
-    for (;;)
-        cpu_idle();
+    fflush(stdout);
+    cpu_handoff(boot_image_entry(next), csr_read(CSR_MHARTID), 0);
 }

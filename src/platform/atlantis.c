@@ -274,6 +274,7 @@ static const struct boot_image bootrom_images[] = {
         .load_addr = 0x20100000,
         .max_size = 0x40000,
         .nor_offset = 0x10000,
+        .exec = true,
     },
 };
 
@@ -285,6 +286,7 @@ static const struct boot_image fsbl_boot_images[] = {
         .load_addr = 0x20140000,
         .max_size = 0x80000,
         .nor_offset = 0x50000,
+        .exec = true,
     },
 };
 
