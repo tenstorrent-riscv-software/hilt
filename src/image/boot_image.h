@@ -28,6 +28,12 @@ struct boot_image {
     uint32_t nor_offset;         /* byte offset of the SIMG in NOR flash */
 };
 
+/* Get the entry point for a boot image */
+static inline uintptr_t boot_image_entry(const struct boot_image *image)
+{
+    return image->load_addr;
+}
+
 /*
  * Fn ptr to read an image from the boot medium
  * @param ctx pointer to pass to the read function
