@@ -47,6 +47,13 @@ if meson.is_cross_build()
   ).stdout().strip()
   add_project_arguments('-nostdinc', '-idirafter', gcc_include_dir, language: 'c')
 
+  # Override the 24Mhz external clock value.
+  frequency = get_option('frequency')
+  if frequency != 0
+    add_project_arguments('-DOSC_CLOCK_FREQUENCY=' + frequency.to_string() + 'U',
+                          language: 'c')
+  endif
+
   picolibc = subproject(
     'picolibc',
     default_options: [

@@ -38,9 +38,10 @@ ninja -C build
 
 The following meson options can be set at build time:
 
-| Option      | Type    | Default | Description                              |
-|-------------|---------|---------|------------------------------------------|
+| Option        | Type    | Default | Description                              |
+|---------------|---------|---------|------------------------------------------|
 | `platform-fw` | string  | `''`    | Platform firmware binary to add to the NOR |
+| `frequency`   | integer | `0`     | System clock in Hz. `0` selects 24 MHz.  |
 
 Options are set with `-D<option>=<value>`. For example, to provide a placeform-fw binary:
 
