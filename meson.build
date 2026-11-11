@@ -25,6 +25,14 @@ hilt_inc = include_directories(
     'src/include',
     'src/arch/riscv/include',
 )
+
+# simg parsing source code. Must be able to be compiled on the host for testing
+image_sources = files('src/crc32.c', 'src/image/simg.c', 'src/image/boot_image.c')
+
+python = find_program('python3')
+mksimg= files('tools/mksimg.py')
+mknor = files('tools/mknor.py')
+
 if meson.is_cross_build()
   # ---- Firmware ----
   cc = meson.get_compiler('c')
@@ -76,9 +84,12 @@ if meson.is_cross_build()
     'src/console.c',
     'src/drivers/serial/uart_8250.c',
     'src/drivers/serial/uart_dw_16550.c',
+    'src/drivers/spi/dwc_ssi.c',
+    'src/drivers/flash/spi_nor.c',
     'src/platform/atlantis.c',
     'src/main.c',
     'src/timer.c',
+    image_sources,
     build_info_c,
   ]
 
@@ -118,4 +129,94 @@ if meson.is_cross_build()
       build_by_default: true,
     )}
   endforeach
+
+  # simg wrapped binary
+  hilt_simg = custom_target(
+    'hilt.simg',
+    input: [mksimg, hilt_bin['sram']],
+    output: 'hilt.simg',
+    command: [python, '@INPUT0@', '@INPUT1@', '--patch-header', '-o', '@OUTPUT@'],
+    build_by_default: true,
+  )
+
+  bin2hex = find_program('scripts/bin2hex')
+  sh = find_program('sh')
+  rom_load_addr = '0x00040000'
+  custom_target(
+    'hilt-rom.mem',
+    input: hilt_bin['rom'],
+    output: ['hilt-rom_h.hex', 'hilt-rom_l.hex'],
+    command: [
+      sh, '-c',
+      '"$0" -s -o "$1" "$2" "$3" >/dev/null && cp "$1/hex-$3_h.hex" "$4" && cp "$1/hex-$3_l.hex" "$5"',
+      bin2hex, '@PRIVATE_DIR@', '@INPUT@', rom_load_addr, '@OUTPUT0@', '@OUTPUT1@',
+    ],
+    depend_files: files('scripts/bin2hex'),
+    build_by_default: true,
+  )
+
+  # Placeholder for the runtime stage
+  hilt_runtime = custom_target(
+    'hilt_runtime-placeholder.bin',
+    output: 'hilt_runtime-placeholder.bin',
+    command: [
+      python, '-c',
+      'import sys; open(sys.argv[1], "wb").write(b"HILT runtime placeholder\\0" * 160)',
+      '@OUTPUT@',
+    ],
+  )
+
+  # For now platform-fw is just hilt runtime
+  platform_fw_simg = custom_target(
+    'platform-fw.simg',
+    input: [mksimg, hilt_runtime],
+    output: 'platform-fw.simg',
+    command: [python, '@INPUT0@', '@INPUT1@', '--payload-type', 'platform-fw',
+              '--app-name', 'platform-fw', '-o', '@OUTPUT@'],
+    build_by_default: true,
+  )
+
+  # Write NOR image: each SIMG at the offset tools/mknor.py assigns to its
+  # payload type
+  hilt_nor = custom_target(
+    'nor.img',
+    input: [mknor, hilt_simg, platform_fw_simg],
+    output: 'nor.img',
+    command: [python, '@INPUT0@', '-o', '@OUTPUT@', '@INPUT1@', '@INPUT2@'],
+    build_by_default: true,
+  )
+else
+  # ---- host unit tests ----
+  simg_lib = static_library(
+    'simg',
+    image_sources,
+    include_directories: hilt_inc,
+  )
+
+  test_simg = executable(
+    'test_simg',
+    'tests/host/test_simg.c',
+    include_directories: hilt_inc,
+    link_with: simg_lib,
+  )
+
+  golden_payload = custom_target(
+    'golden-payload.bin',
+    output: 'golden-payload.bin',
+    command: [
+      python, '-c',
+      'import sys; open(sys.argv[1], "wb").write(bytes(range(256)) * 37)',
+      '@OUTPUT@',
+    ],
+  )
+
+  # Generate a simg from the packing tool and test against parsing library
+  golden_simg = custom_target(
+    'golden.simg',
+    input: [mksimg, golden_payload],
+    output: 'golden.simg',
+    command: [python, '@INPUT0@', '@INPUT1@', '--patch-header', '-o', '@OUTPUT@'],
+  )
+
+  test('simg', test_simg, args: [golden_simg])
 endif
