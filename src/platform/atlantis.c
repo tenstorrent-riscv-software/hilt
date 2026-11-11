@@ -299,6 +299,10 @@ const struct boot_image *platform_atlantis_boot_images(size_t *count)
     return fsbl_boot_images;
 }
 
+#ifndef OSC_CLOCK_FREQUENCY
+#define OSC_CLOCK_FREQUENCY          (24 * 1000000) /* Default to 24MHz */
+#endif
+
 /*
  * Linked at RCPU_BOOT_SETTINGS_OFFSET in the image, see linker/hilt.ld.in.
  * hilt should read this table to determine settings to use and not depend on
@@ -308,7 +312,7 @@ static const volatile struct settings_table_init boot_settings
     __attribute__((section(".boot_settings"), used)) = {
     .platform  = PLATFORM_SILICON,
     .baud      = 9600,
-    .frequency = 24 * 1000000, /* Default to 24Mhz for now */
+    .frequency = OSC_CLOCK_FREQUENCY,
 };
 
 uintptr_t platform_atlantis_boot_settings(void)

@@ -7,3 +7,11 @@ option(
   value: '',
   description: 'Path to a platform-fw binary to wrap in a SIMG and place in nor.img.',
 )
+
+option(
+  'frequency',
+  type: 'integer',
+  min: 0,
+  value: 0,
+  description: 'System clock in Hz. By default 24MHz.',
+)
