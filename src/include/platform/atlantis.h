@@ -30,4 +30,5 @@ const char *platform_atlantis_boot_cause_name(void);
  */
 uintptr_t platform_atlantis_boot_settings(void);
 
+const char *platform_atlantis_platform_name(void);
 #endif /* __PLATFORM_ATLANTIS_H__ */

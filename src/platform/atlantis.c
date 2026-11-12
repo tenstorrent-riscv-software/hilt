@@ -299,6 +299,14 @@ const struct boot_image *platform_atlantis_boot_images(size_t *count)
     return fsbl_boot_images;
 }
 
+#if defined(BUILD_PLATFORM_HAPS_BOOT)
+#define PLATFORM_TYPE PLATFORM_HAPS_BOOT
+#elif defined(BUILD_PLATFORM_HAPS_PCIE)
+#define PLATFORM_TYPE PLATFORM_HAPS_PCIE
+#else
+#define PLATFORM_TYPE PLATFORM_SILICON
+#endif
+
 #ifndef OSC_CLOCK_FREQUENCY
 #define OSC_CLOCK_FREQUENCY          (24 * 1000000) /* Default to 24MHz */
 #endif
@@ -315,7 +323,7 @@ const struct boot_image *platform_atlantis_boot_images(size_t *count)
  */
 static const volatile struct settings_table_init boot_settings
     __attribute__((section(".boot_settings"), used)) = {
-    .platform  = PLATFORM_SILICON,
+    .platform  = PLATFORM_TYPE,
     .baud      = CONSOLE_BAUD,
     .frequency = OSC_CLOCK_FREQUENCY,
 };
@@ -327,6 +335,20 @@ uintptr_t platform_atlantis_boot_settings(void)
         return 0;
     }
     return (uintptr_t)&boot_settings;
+}
+
+const char *platform_atlantis_platform_name(void)
+{
+    switch (boot_settings.platform) {
+    case PLATFORM_HAPS_BOOT:
+        return "HAPS boot";
+    case PLATFORM_HAPS_PCIE:
+        return "HAPS PCIe";
+    case PLATFORM_SILICON:
+        return "silicon";
+    default:
+        return "unknown";
+    }
 }
 
 static uint64_t uart_clock_frequency(void)

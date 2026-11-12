@@ -23,3 +23,11 @@ option(
   value: 9600,
   description: 'Console UART baud rate.',
 )
+
+option(
+  'platform',
+  type: 'combo',
+  choices: ['silicon', 'haps-boot', 'haps-pcie'],
+  value: 'silicon',
+  description: 'Platform to build for. silicon also covers QEMU.',
+)
