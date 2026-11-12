@@ -36,11 +36,25 @@ meson setup build --cross-file cross/riscv32-rondel.ini
 ninja -C build
 ```
 
+The following meson options can be set at build time:
+
+| Option      | Type    | Default | Description                              |
+|-------------|---------|---------|------------------------------------------|
+| `platform-fw` | string  | `''`    | Platform firmware binary to add to the NOR |
+
+Options are set with `-D<option>=<value>`. For example, to provide a placeform-fw binary:
+
+```sh
+meson setup build --cross-file cross/riscv32-rondel.ini \
+    -Dplatform-fw=/path/to/platform-fw.bin
+```
+
 Build outputs are produced in the build/ directory:
 
 - `hilt.bin` / `hilt.elf` - the firmware targeting RCPU SRAM.
 - `hilt.simg` - a simg of hilt.bin
-- `nor.img` - 32 MiB NOR flash image
+- `platform-fw.simg` - a simg of the `platform-fw` binary, if one is given
+- `nor.img` - 32 MiB NOR flash image holding the simgs
 - `hilt-rom.bin` / `hilt-rom.elf` - bootrom image
 - `hilt-rom_h.hex` / `hilt-rom_l.hex` - bootrom memory files for HAPs
 - `platform-fw.simg` - a simg of the platform-fw. Currently this is a
@@ -66,6 +80,9 @@ before handing off execution to HILT.
 ```sh
 ./tests/target/run-qemu-boot.sh
 ```
+
+The test passes once HILT hands off to the platform firmware, so the NOR image
+must be built with the `platform-fw` option.
 
 To test with the HILT bootrom image instead of ZSBL:
 
