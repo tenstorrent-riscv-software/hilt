@@ -2,12 +2,34 @@
 
 # HILT
 
-Firmware for the Tenstorrent Atlantis SoC System Management Controller
-(SMC). Runs on the Rondel based RCPU, the Atlantis SMC.
+## Overiew
+HILT is the bootloader for the Tenstorrent Atlantis SoC System Management
+Controller (SMC). Runs on the Rondel based RCPU, the Atlantis SMC.
 
-## Building
+HILT can be compiled to run in maskrom, as hilt-bootrom, or in SRAM, as
+the first stage bootloader (FSBL), hilt. hilt-bootrom is not the actual
+Atlantis bootrom but the intention is that it is functionaly equivalent
+and can be used as a reference project.
 
-Requires `riscv64-unknown-elf-gcc`, meson, ninja, and Python 3.
+### Hardware Support
+
+HILT currently only supports running on the Atlantis platform, qemu or
+emulation.
+
+## Using
+
+### Prerequisites
+
+Required tools:
+
+* riscv64-unknown-elf-gcc
+* meson
+* ninja
+* Python 3.
+
+### Building
+
+To build the applicaiton, run the following command:
 
 ```sh
 meson setup build --cross-file cross/riscv32-rondel.ini
@@ -24,7 +46,7 @@ Build outputs are produced in the build/ directory:
 - `platform-fw.simg` - a simg of the platform-fw. Currently this is a
    placeholder binary.
 
-## Host unit tests
+### Host unit tests
 
 Unit tests can be run natively on the host running:
 
@@ -33,7 +55,7 @@ meson setup build-host
 meson test -C build-host
 ```
 
-## Boot test on QEMU
+### Boot test on QEMU
 
 The generated NOR image can be tested on the `tt-atlantis` machine on
 Tenstorrent QEMU fork. It requires a QEMU build at ../out/qemu; set
