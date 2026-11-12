@@ -161,23 +161,35 @@ if meson.is_cross_build()
     build_by_default: true,
   )
 
-  # For now platform-fw is just hilt runtime
+
+  # SIMGs placed in the NOR image
+  nor_simgs = [hilt_simg]
+
+  # Use the meson option for platform fw if it is provided. Otherwise use the placeholder.
+  platform_fw_option = get_option('platform-fw')
+  if platform_fw_option != ''
+    platform_fw = files(platform_fw_option)
+  else
+    platform_fw = rcpu_runtime
+  endif
+
   platform_fw_simg = custom_target(
     'platform-fw.simg',
-    input: [mksimg, rcpu_runtime],
+    input: [mksimg, platform_fw],
     output: 'platform-fw.simg',
     command: [python, '@INPUT0@', '@INPUT1@', '--payload-type', 'platform-fw',
               '--app-name', 'platform-fw', '-o', '@OUTPUT@'],
     build_by_default: true,
   )
+  nor_simgs += platform_fw_simg
 
   # Generate the entire NOR image. Use the layout information defined in
   # src/include/platform/layout.h, the same definitions used by the target
   hilt_nor = custom_target(
     'nor.img',
-    input: [mknor, hilt_simg, platform_fw_simg],
+    input: [mknor, nor_simgs],
     output: 'nor.img',
-    command: [python, '@INPUT0@', '-o', '@OUTPUT@', '@INPUT1@', '@INPUT2@'],
+    command: [python, '@INPUT0@', '-o', '@OUTPUT@', nor_simgs],
     depend_files: files('src/include/platform/layout.h'),
     build_by_default: true,
   )
