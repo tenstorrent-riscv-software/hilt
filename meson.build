@@ -54,6 +54,10 @@ if meson.is_cross_build()
                           language: 'c')
   endif
 
+  # Console UART baud rate; the terminal on the other end has to match it.
+  add_project_arguments('-DCONSOLE_BAUD=' + get_option('baud').to_string() + 'U',
+                        language: 'c')
+
   picolibc = subproject(
     'picolibc',
     default_options: [
