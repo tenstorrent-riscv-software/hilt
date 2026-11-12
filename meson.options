@@ -15,3 +15,11 @@ option(
   value: 0,
   description: 'System clock in Hz. By default 24MHz.',
 )
+
+option(
+  'baud',
+  type: 'integer',
+  min: 1,
+  value: 9600,
+  description: 'Console UART baud rate.',
+)
