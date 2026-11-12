@@ -43,6 +43,7 @@ The following meson options can be set at build time:
 | `platform-fw` | string  | `''`    | Platform firmware binary to add to the NOR |
 | `frequency`   | integer | `0`     | System clock in Hz. `0` selects 24 MHz.  |
 | `baud     `   | integer | `9600`  | Console baud rate.                       |
+| `platform`    | combo   | `silicon` | `silicon` (also QEMU), `haps-boot` or `haps-pcie` |
 
 Options are set with `-D<option>=<value>`. For example, to provide a placeform-fw binary:
 

@@ -58,6 +58,11 @@ if meson.is_cross_build()
   add_project_arguments('-DCONSOLE_BAUD=' + get_option('baud').to_string() + 'U',
                         language: 'c')
 
+  # Platform the image is built for; each HAPS one emulates a subset of the SoC.
+  add_project_arguments(
+    '-DBUILD_PLATFORM_' + get_option('platform').to_upper().underscorify(),
+    language: 'c')
+
   picolibc = subproject(
     'picolibc',
     default_options: [
