@@ -226,19 +226,19 @@ static void soc_nocc_bus_reset_release(void)
     soc_mmr_write(MMR_SOC_BUS_RSTN, reg | SOC_BUS_RSTN_NOCC_CLK);
 }
 
-static void soc_lsio_uart0_reset_release(void)
+static void soc_lsio_reset_release(uint32_t mask)
 {
     uint32_t reg = soc_mmr_read(MMR_SOC_LSIO_BLK_RST);
-    soc_mmr_write(MMR_SOC_LSIO_BLK_RST, reg | SOC_LSIO_BLK_RST_UART0);
+    soc_mmr_write(MMR_SOC_LSIO_BLK_RST, reg | mask);
 }
 
-static void soc_lsio_uart0_set_cg_enable(bool enable)
+static void soc_lsio_set_cg_enable(uint32_t mask, bool enable)
 {
     uint32_t reg = soc_mmr_read(MMR_SOC_LSIO_BLK_CG);
     if (enable) {
-        reg |= SOC_LSIO_BLK_CG_UART0;
+        reg |= mask;
     } else {
-        reg &= ~SOC_LSIO_BLK_CG_UART0;
+        reg &= ~mask;
     }
     soc_mmr_write(MMR_SOC_LSIO_BLK_CG, reg);
     udelay(CLOCK_GATE_DELAY_US);
@@ -357,8 +357,8 @@ int platform_atlantis_init(void)
 
     soc_nocc_bus_reset_release();
 
-    soc_lsio_uart0_set_cg_enable(true);
-    soc_lsio_uart0_reset_release();
+    soc_lsio_set_cg_enable(SOC_LSIO_BLK_CG_UART0, true);
+    soc_lsio_reset_release(SOC_LSIO_BLK_RST_UART0);
 
     /* Ignore failing uart_init for now until postcodes are added */
     uart_dw_16550_init(UART0_BASE, uart_clock_frequency(), 9600);
