@@ -54,8 +54,9 @@ int main(void)
             cpu_idle();
     }
 
-    printf("HILT: handoff at 0x%08x\n", (unsigned)entry);
+    printf("HILT: handoff at 0x%08x, boot settings at 0x%08x\n", (unsigned)entry,
+           (unsigned)platform_atlantis_boot_settings());
     printf("HILT: complete\n");
     fflush(stdout);
-    cpu_handoff(entry, csr_read(CSR_MHARTID), 0);
+    cpu_handoff(entry, csr_read(CSR_MHARTID), platform_atlantis_boot_settings());
 }
