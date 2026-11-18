@@ -24,4 +24,10 @@ int platform_atlantis_load_boot_image(const struct boot_image *image,
 const char *platform_atlantis_boot_mode_name(void);
 const char *platform_atlantis_boot_cause_name(void);
 
+/*
+ * Address of the struct settings_table_init to hand to the next stage in a1,
+ * 0 when this stage does not provide one.
+ */
+uintptr_t platform_atlantis_boot_settings(void);
+
 #endif /* __PLATFORM_ATLANTIS_H__ */
