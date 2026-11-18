@@ -15,6 +15,7 @@
 #include <image/boot_image.h>
 #include <image/simg.h>
 #include <platform/layout.h>
+#include <platform/settings_table.h>
 
 #define MMR_SOC_PLL_RCPU_CFG             0x000
 #define MMR_SOC_PLL_NOCC_CFG             0x004
@@ -298,22 +299,41 @@ const struct boot_image *platform_atlantis_boot_images(size_t *count)
     return fsbl_boot_images;
 }
 
-#define HAPS_FREQUENCY 2500000
+/*
+ * Linked at RCPU_BOOT_SETTINGS_OFFSET in the image, see linker/hilt.ld.in.
+ * hilt should read this table to determine settings to use and not depend on
+ * compile time options. This table may be changed after building.
+ */
+static const volatile struct settings_table_init boot_settings
+    __attribute__((section(".boot_settings"), used)) = {
+    .platform  = PLATFORM_SILICON,
+    .baud      = 9600,
+    .frequency = 24 * 1000000, /* Default to 24Mhz for now */
+};
+
+uintptr_t platform_atlantis_boot_settings(void)
+{
+    /* Only the boot stage passes settings on, to the runtime stage */
+    if (platform_atlantis_is_bootrom()) {
+        return 0;
+    }
+    return (uintptr_t)&boot_settings;
+}
 
 static uint64_t uart_clock_frequency(void)
 {
-    return HAPS_FREQUENCY;
+    return boot_settings.frequency;
 }
 
 static uint64_t rcpu_clock_frequency(void)
 {
-    return HAPS_FREQUENCY;
+    return boot_settings.frequency;
 }
 
 /* The QSPI reference clock is the NOCC clock. */
 static uint64_t qspi_clock_frequency(void)
 {
-    return HAPS_FREQUENCY;
+    return boot_settings.frequency;
 }
 
 #define UART0_BASE 0x48100000U
@@ -387,7 +407,7 @@ int platform_atlantis_init(void)
     soc_lsio_reset_release(SOC_LSIO_BLK_RST_UART0);
 
     /* Ignore failing uart_init for now until postcodes are added */
-    uart_dw_16550_init(UART0_BASE, uart_clock_frequency(), 9600);
+    uart_dw_16550_init(UART0_BASE, uart_clock_frequency(), boot_settings.baud);
 
     /*
      * Initialize the console even if uart_init failed to prevent printf()
