@@ -5,7 +5,7 @@ option(
   'platform-fw',
   type: 'string',
   value: '',
-  description: 'Path to a platform-fw binary to wrap in a SIMG and place in nor.img.',
+  description: 'Path to a platform-fw FIT to place in nor.img. A placeholder FIT is built if empty.',
 )
 
 option(

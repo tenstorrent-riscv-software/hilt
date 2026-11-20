@@ -194,35 +194,39 @@ if meson.is_cross_build()
     build_by_default: true,
   )
 
-
-  # SIMGs placed in the NOR image
-  nor_simgs = [hilt_simg]
-
-  # Use the meson option for platform fw if it is provided. Otherwise use the placeholder.
   platform_fw_option = get_option('platform-fw')
   if platform_fw_option != ''
-    platform_fw = files(platform_fw_option)
+    platform_fw_fit = files(platform_fw_option)
   else
-    platform_fw = rcpu_runtime
+    # binman is only needed if the platform_fw.fit is not proided
+    binman = find_program('binman')
+
+    binman_dir = meson.current_build_dir() / 'platform-fw-binman'
+    platform_fw_fit = custom_target(
+      'platform-fw.fit',
+      input: ['tools/platform-fw-placeholder.dts', rcpu_runtime],
+      output: 'platform-fw.fit',
+      command: [
+        'sh', '-ec',
+        'mkdir -p "$1" && cd "$1" && "$2" build -d "$3" -I "$4" -O . && cp platform-fw.fit "$4"',
+        'binman', binman_dir, binman.full_path(),
+        meson.current_source_dir() / 'tools/platform-fw-placeholder.dts',
+        meson.current_build_dir(),
+      ],
+      build_by_default: true,
+    )
   endif
 
-  platform_fw_simg = custom_target(
-    'platform-fw.simg',
-    input: [mksimg, platform_fw],
-    output: 'platform-fw.simg',
-    command: [python, '@INPUT0@', '@INPUT1@', '--payload-type', 'platform-fw',
-              '--app-name', 'platform-fw', '-o', '@OUTPUT@'],
-    build_by_default: true,
-  )
-  nor_simgs += platform_fw_simg
+  # Images placed in the NOR image
+  nor_images = [hilt_simg, platform_fw_fit]
 
   # Generate the entire NOR image. Use the layout information defined in
   # src/include/platform/layout.h, the same definitions used by the target
   hilt_nor = custom_target(
     'nor.img',
-    input: [mknor, nor_simgs],
+    input: [mknor, nor_images],
     output: 'nor.img',
-    command: [python, '@INPUT0@', '-o', '@OUTPUT@', nor_simgs],
+    command: [python, '@INPUT0@', '-o', '@OUTPUT@', nor_images],
     depend_files: files('src/include/platform/layout.h'),
     build_by_default: true,
   )
