@@ -9,13 +9,12 @@
 #include "image/boot_image.h"
 #include "image/simg.h"
 
-int boot_image_load_image(const struct boot_image *image, boot_image_read_fn read,
-                          void *ctx, bool is_bootrom)
+int load_simg(const struct boot_image *image, boot_image_read_fn read,
+                          void *ctx, uint32_t *entry)
 {
     uint32_t offset = image->nor_offset;
     uint8_t *dest = (uint8_t *)image->load_addr;
     struct simg_header *hdr = (struct simg_header *)dest;
-    enum simg_domain domain;
     enum simg_status st;
     uint64_t rest;
     int rc;
@@ -30,13 +29,11 @@ int boot_image_load_image(const struct boot_image *image, boot_image_read_fn rea
         return rc;
     }
 
-    /* If running as bootrom use the ZSBL domain, otherwise FSBL domain */
-    domain = is_bootrom ? SIMG_DOMAIN_ZSBL : SIMG_DOMAIN_FSBL;
     st = simg_validate_header(hdr);
     if (st == SIMG_OK) {
-        st = simg_check_domain(hdr, domain);
+        st = simg_check_domain(hdr, image->simg.domain);
     }
-    if (st == SIMG_OK && hdr->payload_type != image->type) {
+    if (st == SIMG_OK && hdr->payload_type != image->simg.type) {
         st = SIMG_ERR_PAYLOAD_TYPE;
     }
     if (st != SIMG_OK) {
@@ -64,7 +61,29 @@ int boot_image_load_image(const struct boot_image *image, boot_image_read_fn rea
         return -EBADMSG;
     }
 
+    /*
+     * The entry for a simg is always the load adresses. The first byte of the
+     * header contains a jump to +512 bytes. 0 is an invalid entry for HILT.
+     */
+    *entry = 0;
+    if (image->simg.exec) {
+        *entry = image->load_addr;
+    }
     printf("%s: %u bytes loaded to 0x%08x, CRC ok\n", image->name,
            (unsigned)hdr->payload_length, (unsigned)image->load_addr);
     return 0;
+}
+
+int boot_image_load_image(const struct boot_image *image, boot_image_read_fn read,
+                          void *ctx, uint32_t *entry)
+{
+    if (!image || !ctx || !entry) {
+        return -EINVAL;
+    }
+
+    if (image->is_fit) {
+        printf("fit image loading not yet supported\n");
+        return -EINVAL;
+    }
+    return load_simg(image, read, ctx, entry);
 }

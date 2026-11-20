@@ -13,6 +13,7 @@ extern const char g_build_banner[];
 int main(void)
 {
     const struct boot_image *images;
+    uint32_t entry;
     size_t count;
     bool is_bootrom;
     const char *target = "SRAM";
@@ -34,7 +35,7 @@ int main(void)
         printf("HILT: image %s: load 0x%08x, NOR 0x%x\n",
                images[i].name, (unsigned)images[i].load_addr,
                (unsigned)images[i].nor_offset);
-        rc = platform_atlantis_load_boot_image(&images[i]);
+        rc = platform_atlantis_load_boot_image(&images[i], &entry);
         if (rc) {
             printf("failed to load %s rc=%d\n", images[i].name, rc);
         }
