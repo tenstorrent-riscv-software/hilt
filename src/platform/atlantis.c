@@ -275,15 +275,20 @@ static const struct boot_image bootrom_images[] = {
     },
 };
 
+/*
+ * FDT cannot be written before the image since the entry will be incorrect.
+ * Setup buffer in hilt to store the FDT while parsing the image
+ * */
+#define PLATFORM_FW_FDT_MAX_SIZE 0x1000
+static uint8_t fdt_buffer[PLATFORM_FW_FDT_MAX_SIZE] __attribute__((aligned(8)));
+
 /* Images to be loaded by the HILT boot stage */
 static const struct boot_image fsbl_boot_images[] = {
     {
         .name = "platform-fw",
-        .is_fit = false,
-        .simg.type = SIMG_PAYLOAD_PLATFORM_FW,
-        .simg.exec = true,
-        .simg.domain = SIMG_DOMAIN_FSBL,
-        .load_addr = PLATFORM_FW_LOAD_ADDR,
+        .is_fit = true,
+        .load_addr = (uintptr_t)fdt_buffer,
+        .fdt_max_size = sizeof(fdt_buffer),
         .max_size = PLATFORM_FW_MAX_SIZE,
         .nor_offset = PLATFORM_FW_NOR_OFFSET,
     },
