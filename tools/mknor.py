@@ -2,11 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2025-2026 Tenstorrent USA, Inc.
 #
-# Build a raw NOR flash image from SIMGs. Each SIMG is placed at the offset
-# NOR_LAYOUT gives for the payload type in its header. The offsets are read
-# from src/include/platform/layout.h, which the firmware is built from.
+# Build a raw NOR flash image. The first argument is a SIMG, placed at the
+# offset NOR_LAYOUT gives for the payload type in its header. The optional
+# second and third arguments are the platform-fw and ascalon-fw FITs, each
+# placed in its slot as it is. The offsets are read from
+# src/include/platform/layout.h, which the firmware is built from.
 #
-#     tools/mknor.py -o build/hilt-nor.img build/hilt.simg build/platform-fw.simg
+#     tools/mknor.py -o build/hilt-nor.img build/hilt.simg build/platform-fw.fit
+#     tools/mknor.py -o nor.img hilt.simg platform-fw.fit ascalon-fw.fit
 #     tools/mknor.py -s 8M -o nor.img build/hilt.simg
 #
 
@@ -39,30 +42,53 @@ def read_defines(path: str) -> dict:
         sys.exit(f"mknor: {e}")
 
 
+# Slot name -> prefix of its <IMAGE>_NOR_OFFSET and <IMAGE>_MAX_SIZE defines.
+SLOT_DEFINES = {
+    "hilt-boot": "HILT_BOOT",
+    "platform-fw": "PLATFORM_FW",
+    "ascalon-fw": "ASCALON_FW",
+}
+
+
 def read_nor_layout(path: str) -> tuple:
-    """(NOR offset -> payload type, payload type -> max image size), from the
+    """(NOR offset -> slot name, slot name -> max image size), from the
     <IMAGE>_NOR_OFFSET and <IMAGE>_MAX_SIZE defines."""
     defines = read_defines(path)
     layout = {}
     max_sizes = {}
-    for image, ptype in (("HILT_BOOT", SIMG_PAYLOAD_HILT_BOOT),
-                         ("PLATFORM_FW", SIMG_PAYLOAD_PLATFORM_FW)):
+    for slot, image in SLOT_DEFINES.items():
         for name in (f"{image}_NOR_OFFSET", f"{image}_MAX_SIZE"):
             if name not in defines:
                 sys.exit(f"mknor: {path}: no integer #define for {name}")
-        layout[defines[f"{image}_NOR_OFFSET"]] = ptype
-        max_sizes[ptype] = defines[f"{image}_MAX_SIZE"]
+        offset = defines[f"{image}_NOR_OFFSET"]
+        if offset in layout:
+            sys.exit(f"mknor: {path}: {slot} and {layout[offset]} are both "
+                     f"at {offset:#x}")
+        layout[offset] = slot
+        max_sizes[slot] = defines[f"{image}_MAX_SIZE"]
+
+    # A slot's size limit must not reach into the slot after it.
+    offsets = sorted(layout)
+    for off, nxt in zip(offsets, offsets[1:]):
+        slot = layout[off]
+        if off + max_sizes[slot] > nxt:
+            sys.exit(f"mknor: {path}: {slot} at {off:#x} with max size "
+                     f"{max_sizes[slot]:#x} overlaps {layout[nxt]} at {nxt:#x}")
     return layout, max_sizes
 
 
-# MAX_SIZES is the limit the loader puts on a whole SIMG (header + payload +
-# signature); a larger image fits in flash but would be rejected at boot.
+# MAX_SIZES is the limit the loader puts on a whole image (for a SIMG: header +
+# payload + signature); a larger image fits in flash but would be rejected at
+# boot.
 NOR_LAYOUT, MAX_SIZES = read_nor_layout(LAYOUT_HEADER)
 
-PAYLOAD_NAMES = {
+# SIMG payload type -> the slot it goes in.
+PAYLOAD_SLOTS = {
     SIMG_PAYLOAD_HILT_BOOT: "hilt-boot",
     SIMG_PAYLOAD_PLATFORM_FW: "platform-fw",
 }
+
+FDT_MAGIC = b"\xd0\x0d\xfe\xed"
 
 DEFAULT_OUTPUT = "nor.img"
 DEFAULT_SIZE = "32M"
@@ -97,16 +123,41 @@ def slot_sizes(flash_size: int) -> dict:
             for off, end in zip(offsets, ends)}
 
 
-def payload_name(ptype: int) -> str:
-    return PAYLOAD_NAMES.get(ptype, str(ptype))
+def read_image(path: str) -> bytes:
+    try:
+        with open(path, "rb") as f:
+            return f.read()
+    except OSError as e:
+        sys.exit(f"mknor: {e}")
+
+
+def simg_payload_type(path: str, blob: bytes) -> int:
+    """Payload type of a SIMG, after checking it is a well-formed one."""
+    try:
+        header = parse_simg(blob)
+    except ValueError as e:
+        sys.exit(f"mknor: {path}: {e}")
+    if header["magic"] != SIMG_MAGIC:
+        sys.exit(f"mknor: {path}: not a SIMG (bad magic)")
+    if not header["crc_valid"]:
+        sys.exit(f"mknor: {path}: SIMG header CRC mismatch")
+    if not header["length_valid"]:
+        sys.exit(f"mknor: {path}: is {header['image_length']} bytes, but its "
+                 f"header describes a {header['total_size']}-byte SIMG")
+    return header["payload_type"]
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         prog="mknor.py",
-        description="Build a raw NOR flash image from SIMGs, each at the offset "
-                    "NOR_LAYOUT assigns to its payload type.")
-    parser.add_argument("simgs", nargs="+", metavar="SIMG", help="SIMG files to place")
+        description="Build a raw NOR flash image from a SIMG, placed at the "
+                    "offset NOR_LAYOUT assigns to its payload type, and "
+                    "optionally the platform-fw and ascalon-fw FITs.")
+    parser.add_argument("simg", metavar="SIMG", help="SIMG file to place")
+    parser.add_argument("platform_fw", nargs="?", metavar="PLATFORM_FW_FIT",
+                        help="platform-fw FIT to place in the platform-fw slot")
+    parser.add_argument("ascalon_fw", nargs="?", metavar="ASCALON_FW_FIT",
+                        help="ascalon-fw FIT to place in the ascalon-fw slot")
     parser.add_argument("-s", "--size", type=parse_size, default=DEFAULT_SIZE,
                         metavar="SIZE",
                         help="flash size in bytes, decimal or 0x/0o/0b prefixed, "
@@ -116,42 +167,36 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     slots = slot_sizes(args.size)
-    offset_of = {ptype: off for off, ptype in NOR_LAYOUT.items()}
-    for off in NOR_LAYOUT:
-        if off >= args.size:
-            sys.exit(f"mknor: slot at {off:#x} is past the end of the "
-                     f"{args.size:#x}-byte flash")
+    offset_of = {slot: off for off, slot in NOR_LAYOUT.items()}
+
+    # (path, contents, name of the slot it goes in)
+    images = []
+
+    blob = read_image(args.simg)
+    ptype = simg_payload_type(args.simg, blob)
+    if ptype not in PAYLOAD_SLOTS:
+        sys.exit(f"mknor: {args.simg}: no NOR slot for payload type {ptype}; "
+                 f"known: {', '.join(PAYLOAD_SLOTS.values())}")
+    simg_slot = PAYLOAD_SLOTS[ptype]
+    images.append((args.simg, blob, simg_slot))
+
+    for path, slot in ((args.platform_fw, "platform-fw"),
+                       (args.ascalon_fw, "ascalon-fw")):
+        if path is None:
+            continue
+        if slot == simg_slot:
+            sys.exit(f"mknor: {args.simg} and {path} are both {slot}")
+        blob = read_image(path)
+        if not blob.startswith(FDT_MAGIC):
+            sys.exit(f"mknor: {path}: not a FIT (bad magic)")
+        images.append((path, blob, slot))
 
     placements = []
-    seen = {}
-    for path in args.simgs:
-        try:
-            with open(path, "rb") as f:
-                blob = f.read()
-        except OSError as e:
-            sys.exit(f"mknor: {e}")
-        try:
-            header = parse_simg(blob)
-        except ValueError as e:
-            sys.exit(f"mknor: {path}: {e}")
-        if header["magic"] != SIMG_MAGIC:
-            sys.exit(f"mknor: {path}: not a SIMG (bad magic)")
-        if not header["crc_valid"]:
-            sys.exit(f"mknor: {path}: SIMG header CRC mismatch")
-        if not header["length_valid"]:
-            sys.exit(f"mknor: {path}: is {header['image_length']} bytes, but its "
-                     f"header describes a {header['total_size']}-byte SIMG")
-
-        ptype = header["payload_type"]
-        name = payload_name(ptype)
-        if ptype not in offset_of:
-            sys.exit(f"mknor: {path}: no NOR slot for payload type {name}; "
-                     f"known: {', '.join(payload_name(t) for t in offset_of)}")
-        if ptype in seen:
-            sys.exit(f"mknor: {path} and {seen[ptype]} are both {name}")
-        seen[ptype] = path
-
-        offset = offset_of[ptype]
+    for path, blob, name in images:
+        offset = offset_of[name]
+        if offset >= args.size:
+            sys.exit(f"mknor: {name} slot at {offset:#x} is past the end of "
+                     f"the {args.size:#x}-byte flash")
         if len(blob) > slots[offset]:
             sys.exit(f"mknor: {path} is {len(blob)} bytes, larger than the "
                      f"{slots[offset]:#x}-byte {name} slot at {offset:#x}")
