@@ -264,7 +264,10 @@ bool platform_atlantis_is_bootrom(void)
 static const struct boot_image bootrom_images[] = {
     {
         .name = "hilt",
-        .type = SIMG_PAYLOAD_HILT_BOOT,
+        .is_fit = false,
+        .simg.type = SIMG_PAYLOAD_HILT_BOOT,
+        .simg.exec = true,
+        .simg.domain = SIMG_DOMAIN_ZSBL,
         .load_addr = HILT_BOOT_LOAD_ADDR,
         .max_size = HILT_BOOT_MAX_SIZE,
         .nor_offset = HILT_BOOT_NOR_OFFSET,
@@ -274,8 +277,11 @@ static const struct boot_image bootrom_images[] = {
 /* Images to be loaded by the HILT boot stage */
 static const struct boot_image fsbl_boot_images[] = {
     {
-        .name = "hilt_runtime",
-        .type = SIMG_PAYLOAD_PLATFORM_FW,
+        .name = "platform-fw",
+        .is_fit = false,
+        .simg.type = SIMG_PAYLOAD_PLATFORM_FW,
+        .simg.exec = true,
+        .simg.domain = SIMG_DOMAIN_FSBL,
         .load_addr = PLATFORM_FW_LOAD_ADDR,
         .max_size = PLATFORM_FW_MAX_SIZE,
         .nor_offset = PLATFORM_FW_NOR_OFFSET,
@@ -427,7 +433,7 @@ static int load_nor_image(void *ctx, uint32_t off, void *buf, size_t len)
     return spi_nor_read((const struct spi_nor *)ctx, off, buf, len);
 }
 
-static int load_image_nor(const struct boot_image *image)
+static int load_image_nor(const struct boot_image *image, uint32_t *entry)
 {
     int rc, shutdown_rc;
     static bool nor_initialized = false;
@@ -441,8 +447,7 @@ static int load_image_nor(const struct boot_image *image)
         nor_initialized = true;
     }
 
-    rc = boot_image_load_image(image, &load_nor_image, &nor,
-                               platform_atlantis_is_bootrom());
+    rc = boot_image_load_image(image, &load_nor_image, &nor, entry);
     if (rc) {
         printf("failed to load boot_images from nor rc=%d\n", rc);
     }
@@ -452,15 +457,16 @@ static int load_image_nor(const struct boot_image *image)
     return rc ? rc : shutdown_rc;
 }
 
-int platform_atlantis_load_boot_image(const struct boot_image *image)
+int platform_atlantis_load_boot_image(const struct boot_image *image,
+                                      uint32_t *entry)
 {
     int rc;
-    if (!image) {
+    if (!image || !entry) {
         return -EINVAL;
     }
 
     if (get_boot_mode() == SOC_RCPU_BOOT_MODE_SEL_NOR) {
-        rc = load_image_nor(image);
+        rc = load_image_nor(image, entry);
     } else {
         /* Only NOR boot is currently supported in HILT */
         rc = -EINVAL;
