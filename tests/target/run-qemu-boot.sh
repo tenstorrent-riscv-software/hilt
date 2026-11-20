@@ -10,7 +10,6 @@
 #   QEMU_STAGE  dir with qemu-system-riscv64, otp/ and zsbl-silicon.bin
 #               (default: ../out/qemu relative to the repo, the cihub layout)
 #   BOOTROM     path to a binary to boot instead of the staged zsbl
-#   OTP         staged otp-gen config name              (default: unprogrammed)
 #   TIMEOUT     seconds to wait for the banner          (default: 60)
 
 set -euo pipefail
@@ -25,14 +24,13 @@ cd "$(dirname "$0")/../.."
 
 BUILD=${BUILD:-build}
 QEMU_BUILD=${QEMU_BUILD:-$PWD/../out/qemu}
-OTP=${OTP:-unprogrammed}
 TIMEOUT=${TIMEOUT:-60}
 
 NOR=$BUILD/nor.img
 CONSOLE=$BUILD/rcpu-console.log
 ASC_LOG=$BUILD/asc-console.log
 
-for f in "$NOR" "$QEMU_BUILD/qemu-system-riscv64" "$QEMU_BUILD/otp/$OTP"; do
+for f in "$NOR" "$QEMU_BUILD/qemu-system-riscv64"; do
     [ -e "$f" ] || { echo "missing: $f" >&2; exit 1; }
 done
 
@@ -56,7 +54,7 @@ rm -f "$CONSOLE"
     -display none \
     -serial "file:$ASC_LOG" \
     -serial "file:$CONSOLE" \
-    -L "$QEMU_BUILD" -L "$QEMU_BUILD/share/qemu" -L "$QEMU_BUILD/otp/$OTP" \
+    -L "$QEMU_BUILD" -L "$QEMU_BUILD/share/qemu" \
     -drive "if=mtd,format=raw,file=$NOR" \
     -monitor none &
 QEMU_PID=$!
