@@ -35,6 +35,7 @@ hilt_inc = include_directories(
 
 # simg parsing source code. Must be able to be compiled on the host for testing
 image_sources = files('src/crc32.c', 'src/image/simg.c', 'src/image/boot_image.c')
+fit_sources = files('src/image/fit.c')
 
 python = find_program('python3')
 bin2hex = files('tools/bin2hex.py')
@@ -135,12 +136,17 @@ if meson.is_cross_build()
       configuration: regions,
     )
 
+    # bootrom does use fdt or fits.
+    enable_fdt = variant == 'sram'
+
     hilt_elf += {variant: executable(
       name + '.elf',
       sources,
+      enable_fdt ? fit_sources : [],
       include_directories: hilt_inc,
+      c_args: enable_fdt ? ['-DENABLE_FDT'] : [],
       # libfdt.a needs string functions from libc.a, so it links first.
-      dependencies: [libfdt_dep, libc_dep, libgcc_dep],
+      dependencies: (enable_fdt ? [libfdt_dep] : []) + [libc_dep, libgcc_dep],
       link_args: [
         '-T' + linker_script.full_path(),
         '-Wl,-Map=' + name + '.map',
@@ -222,17 +228,23 @@ if meson.is_cross_build()
   )
 else
   # ---- host unit tests ----
-  simg_lib = static_library(
-    'simg',
+  # Must come first before anything that uses it.
+  subdir('libfdt')
+
+  image_lib = static_library(
+    'image',
     image_sources,
+    fit_sources,
     include_directories: hilt_inc,
+    c_args: ['-DENABLE_FDT'],
+    dependencies: libfdt_dep,
   )
 
   test_simg = executable(
     'test_simg',
     'tests/host/test_simg.c',
     include_directories: hilt_inc,
-    link_with: simg_lib,
+    link_with: image_lib,
   )
 
   golden_payload = custom_target(
@@ -255,5 +267,13 @@ else
 
   test('simg', test_simg, args: [golden_simg])
 
-  subdir('libfdt')
+  test_fit = executable(
+    'test_fit',
+    'tests/host/test_fit.c',
+    include_directories: hilt_inc,
+    dependencies: libfdt_dep,
+    link_with: image_lib,
+  )
+
+  test('fit', test_fit)
 endif
