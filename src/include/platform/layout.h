@@ -12,6 +12,9 @@
 #define HILT_BOOT_LOAD_ADDR    0x20100000
 #define HILT_BOOT_MAX_SIZE     0x40000
 
+/* Offset of the settings map passed to the runtime, in the HILT boot image */
+#define RCPU_BOOT_SETTINGS_OFFSET 0x400
+
 #define PLATFORM_FW_NOR_OFFSET 0x50000
 #define PLATFORM_FW_LOAD_ADDR  0x20140000
 #define PLATFORM_FW_MAX_SIZE   0x80000

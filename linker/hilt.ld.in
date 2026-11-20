@@ -51,6 +51,13 @@ SECTIONS
 
     .text : {
         *(.text._start)
+        /*
+         * RCPU boot settings map at a fixed offset, image base + 0x400,
+         * defined in src/include/platform/layout.h.
+         */
+        . = 0x200;
+        PROVIDE(__boot_settings = .);
+        KEEP(*(.boot_settings))
         *(.text*)
     } > REGION_TEXT
 
@@ -104,3 +111,5 @@ ASSERT(SIZEOF(.binary_header) == 0x200,
        "binary header must be exactly 512 bytes")
 ASSERT(_start == ORIGIN(REGION_TEXT) + 0x200,
        "_start must sit at image base + 0x200 (SIMG trampoline target)")
+ASSERT(__boot_settings == ORIGIN(REGION_TEXT) + 0x400,
+       "boot settings map must sit at image base + 0x400")

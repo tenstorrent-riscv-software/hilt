@@ -8,6 +8,7 @@
 
 #ifndef __ASSEMBLER__
 
+#define CSR_MHARTID             0xf14
 #define CSR_CYCLE               0xc00
 #define CSR_TIME                0xc01
 #define CSR_CYCLEH              0xc80

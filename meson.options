@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2025-2026 Tenstorrent USA, Inc.
+
+option(
+  'platform-fw',
+  type: 'string',
+  value: '',
+  description: 'Path to a platform-fw binary to wrap in a SIMG and place in nor.img.',
+)
+
+option(
+  'frequency',
+  type: 'integer',
+  min: 0,
+  value: 0,
+  description: 'System clock in Hz. By default 24MHz.',
+)
+
+option(
+  'baud',
+  type: 'integer',
+  min: 1,
+  value: 9600,
+  description: 'Console UART baud rate.',
+)
+
+option(
+  'platform',
+  type: 'combo',
+  choices: ['silicon', 'haps-boot', 'haps-pcie'],
+  value: 'silicon',
+  description: 'Platform to build for. silicon also covers QEMU.',
+)

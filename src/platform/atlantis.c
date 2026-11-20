@@ -15,6 +15,7 @@
 #include <image/boot_image.h>
 #include <image/simg.h>
 #include <platform/layout.h>
+#include <platform/settings_table.h>
 
 #define MMR_SOC_PLL_RCPU_CFG             0x000
 #define MMR_SOC_PLL_NOCC_CFG             0x004
@@ -264,7 +265,10 @@ bool platform_atlantis_is_bootrom(void)
 static const struct boot_image bootrom_images[] = {
     {
         .name = "hilt",
-        .type = SIMG_PAYLOAD_HILT_BOOT,
+        .is_fit = false,
+        .simg.type = SIMG_PAYLOAD_HILT_BOOT,
+        .simg.exec = true,
+        .simg.domain = SIMG_DOMAIN_ZSBL,
         .load_addr = HILT_BOOT_LOAD_ADDR,
         .max_size = HILT_BOOT_MAX_SIZE,
         .nor_offset = HILT_BOOT_NOR_OFFSET,
@@ -274,8 +278,11 @@ static const struct boot_image bootrom_images[] = {
 /* Images to be loaded by the HILT boot stage */
 static const struct boot_image fsbl_boot_images[] = {
     {
-        .name = "hilt_runtime",
-        .type = SIMG_PAYLOAD_PLATFORM_FW,
+        .name = "platform-fw",
+        .is_fit = false,
+        .simg.type = SIMG_PAYLOAD_PLATFORM_FW,
+        .simg.exec = true,
+        .simg.domain = SIMG_DOMAIN_FSBL,
         .load_addr = PLATFORM_FW_LOAD_ADDR,
         .max_size = PLATFORM_FW_MAX_SIZE,
         .nor_offset = PLATFORM_FW_NOR_OFFSET,
@@ -292,22 +299,72 @@ const struct boot_image *platform_atlantis_boot_images(size_t *count)
     return fsbl_boot_images;
 }
 
-#define HAPS_FREQUENCY 2500000
+#if defined(BUILD_PLATFORM_HAPS_BOOT)
+#define PLATFORM_TYPE PLATFORM_HAPS_BOOT
+#elif defined(BUILD_PLATFORM_HAPS_PCIE)
+#define PLATFORM_TYPE PLATFORM_HAPS_PCIE
+#else
+#define PLATFORM_TYPE PLATFORM_SILICON
+#endif
+
+#ifndef OSC_CLOCK_FREQUENCY
+#define OSC_CLOCK_FREQUENCY          (24 * 1000000) /* Default to 24MHz */
+#endif
+
+/* Default to 9600 for now, will override based on efuse value */
+#ifndef CONSOLE_BAUD
+#define CONSOLE_BAUD 9600U
+#endif
+
+/*
+ * Linked at RCPU_BOOT_SETTINGS_OFFSET in the image, see linker/hilt.ld.in.
+ * hilt should read this table to determine settings to use and not depend on
+ * compile time options. This table may be changed after building.
+ */
+static const volatile struct settings_table_init boot_settings
+    __attribute__((section(".boot_settings"), used)) = {
+    .platform  = PLATFORM_TYPE,
+    .baud      = CONSOLE_BAUD,
+    .frequency = OSC_CLOCK_FREQUENCY,
+};
+
+uintptr_t platform_atlantis_boot_settings(void)
+{
+    /* Only the boot stage passes settings on, to the runtime stage */
+    if (platform_atlantis_is_bootrom()) {
+        return 0;
+    }
+    return (uintptr_t)&boot_settings;
+}
+
+const char *platform_atlantis_platform_name(void)
+{
+    switch (boot_settings.platform) {
+    case PLATFORM_HAPS_BOOT:
+        return "HAPS boot";
+    case PLATFORM_HAPS_PCIE:
+        return "HAPS PCIe";
+    case PLATFORM_SILICON:
+        return "silicon";
+    default:
+        return "unknown";
+    }
+}
 
 static uint64_t uart_clock_frequency(void)
 {
-    return HAPS_FREQUENCY;
+    return boot_settings.frequency;
 }
 
 static uint64_t rcpu_clock_frequency(void)
 {
-    return HAPS_FREQUENCY;
+    return boot_settings.frequency;
 }
 
 /* The QSPI reference clock is the NOCC clock. */
 static uint64_t qspi_clock_frequency(void)
 {
-    return HAPS_FREQUENCY;
+    return boot_settings.frequency;
 }
 
 #define UART0_BASE 0x48100000U
@@ -381,7 +438,7 @@ int platform_atlantis_init(void)
     soc_lsio_reset_release(SOC_LSIO_BLK_RST_UART0);
 
     /* Ignore failing uart_init for now until postcodes are added */
-    uart_dw_16550_init(UART0_BASE, uart_clock_frequency(), 9600);
+    uart_dw_16550_init(UART0_BASE, uart_clock_frequency(), boot_settings.baud);
 
     /*
      * Initialize the console even if uart_init failed to prevent printf()
@@ -427,7 +484,7 @@ static int load_nor_image(void *ctx, uint32_t off, void *buf, size_t len)
     return spi_nor_read((const struct spi_nor *)ctx, off, buf, len);
 }
 
-static int load_image_nor(const struct boot_image *image)
+static int load_image_nor(const struct boot_image *image, uint32_t *entry)
 {
     int rc, shutdown_rc;
     static bool nor_initialized = false;
@@ -441,8 +498,7 @@ static int load_image_nor(const struct boot_image *image)
         nor_initialized = true;
     }
 
-    rc = boot_image_load_image(image, &load_nor_image, &nor,
-                               platform_atlantis_is_bootrom());
+    rc = boot_image_load_image(image, &load_nor_image, &nor, entry);
     if (rc) {
         printf("failed to load boot_images from nor rc=%d\n", rc);
     }
@@ -452,15 +508,16 @@ static int load_image_nor(const struct boot_image *image)
     return rc ? rc : shutdown_rc;
 }
 
-int platform_atlantis_load_boot_image(const struct boot_image *image)
+int platform_atlantis_load_boot_image(const struct boot_image *image,
+                                      uint32_t *entry)
 {
     int rc;
-    if (!image) {
+    if (!image || !entry) {
         return -EINVAL;
     }
 
     if (get_boot_mode() == SOC_RCPU_BOOT_MODE_SEL_NOR) {
-        rc = load_image_nor(image);
+        rc = load_image_nor(image, entry);
     } else {
         /* Only NOR boot is currently supported in HILT */
         rc = -EINVAL;

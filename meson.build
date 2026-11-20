@@ -47,6 +47,22 @@ if meson.is_cross_build()
   ).stdout().strip()
   add_project_arguments('-nostdinc', '-idirafter', gcc_include_dir, language: 'c')
 
+  # Override the 24Mhz external clock value.
+  frequency = get_option('frequency')
+  if frequency != 0
+    add_project_arguments('-DOSC_CLOCK_FREQUENCY=' + frequency.to_string() + 'U',
+                          language: 'c')
+  endif
+
+  # Console UART baud rate; the terminal on the other end has to match it.
+  add_project_arguments('-DCONSOLE_BAUD=' + get_option('baud').to_string() + 'U',
+                        language: 'c')
+
+  # Platform the image is built for; each HAPS one emulates a subset of the SoC.
+  add_project_arguments(
+    '-DBUILD_PLATFORM_' + get_option('platform').to_upper().underscorify(),
+    language: 'c')
+
   picolibc = subproject(
     'picolibc',
     default_options: [
@@ -82,6 +98,7 @@ if meson.is_cross_build()
   sources = [
     'src/arch/riscv/header.S',
     'src/arch/riscv/start.S',
+    'src/arch/riscv/handoff.S',
     'src/console.c',
     'src/drivers/serial/uart_8250.c',
     'src/drivers/serial/uart_dw_16550.c',
@@ -161,23 +178,35 @@ if meson.is_cross_build()
     build_by_default: true,
   )
 
-  # For now platform-fw is just hilt runtime
+
+  # SIMGs placed in the NOR image
+  nor_simgs = [hilt_simg]
+
+  # Use the meson option for platform fw if it is provided. Otherwise use the placeholder.
+  platform_fw_option = get_option('platform-fw')
+  if platform_fw_option != ''
+    platform_fw = files(platform_fw_option)
+  else
+    platform_fw = rcpu_runtime
+  endif
+
   platform_fw_simg = custom_target(
     'platform-fw.simg',
-    input: [mksimg, rcpu_runtime],
+    input: [mksimg, platform_fw],
     output: 'platform-fw.simg',
     command: [python, '@INPUT0@', '@INPUT1@', '--payload-type', 'platform-fw',
               '--app-name', 'platform-fw', '-o', '@OUTPUT@'],
     build_by_default: true,
   )
+  nor_simgs += platform_fw_simg
 
   # Generate the entire NOR image. Use the layout information defined in
   # src/include/platform/layout.h, the same definitions used by the target
   hilt_nor = custom_target(
     'nor.img',
-    input: [mknor, hilt_simg, platform_fw_simg],
+    input: [mknor, nor_simgs],
     output: 'nor.img',
-    command: [python, '@INPUT0@', '-o', '@OUTPUT@', '@INPUT1@', '@INPUT2@'],
+    command: [python, '@INPUT0@', '-o', '@OUTPUT@', nor_simgs],
     depend_files: files('src/include/platform/layout.h'),
     build_by_default: true,
   )
