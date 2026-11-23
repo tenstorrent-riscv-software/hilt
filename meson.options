@@ -9,6 +9,13 @@ option(
 )
 
 option(
+  'ascalon-fw',
+  type: 'string',
+  value: '',
+  description: 'Path to an ascalon-fw FIT to place in nor.img. Left out of nor.img if empty.',
+)
+
+option(
   'frequency',
   type: 'integer',
   min: 0,
