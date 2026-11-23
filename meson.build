@@ -220,6 +220,12 @@ if meson.is_cross_build()
   # Images placed in the NOR image
   nor_images = [hilt_simg, platform_fw_fit]
 
+  # The ascalon-fw FIT is optional: its NOR slot is left erased without one.
+  ascalon_fw_option = get_option('ascalon-fw')
+  if ascalon_fw_option != ''
+    nor_images += files(ascalon_fw_option)
+  endif
+
   # Generate the entire NOR image. Use the layout information defined in
   # src/include/platform/layout.h, the same definitions used by the target
   hilt_nor = custom_target(

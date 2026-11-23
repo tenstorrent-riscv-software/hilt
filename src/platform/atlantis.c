@@ -292,6 +292,14 @@ static const struct boot_image fsbl_boot_images[] = {
         .max_size = PLATFORM_FW_MAX_SIZE,
         .nor_offset = PLATFORM_FW_NOR_OFFSET,
     },
+    {
+        .name = "ascalon-fw",
+        .is_fit = true,
+        .load_addr = (uintptr_t)fdt_buffer,
+        .fdt_max_size = sizeof(fdt_buffer),
+        .max_size = ASCALON_FW_MAX_SIZE,
+        .nor_offset = ASCALON_FW_NOR_OFFSET,
+    },
 };
 
 const struct boot_image *platform_atlantis_boot_images(size_t *count)

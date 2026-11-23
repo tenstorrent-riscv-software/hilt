@@ -10,12 +10,22 @@
 
 #define HILT_BOOT_NOR_OFFSET   0x10000
 #define HILT_BOOT_LOAD_ADDR    0x20100000
-#define HILT_BOOT_MAX_SIZE     0x40000
+#define HILT_BOOT_MAX_SIZE     0x10000
 
 /* Offset of the settings map passed to the runtime, in the HILT boot image */
 #define RCPU_BOOT_SETTINGS_OFFSET 0x400
 
-#define PLATFORM_FW_NOR_OFFSET 0x50000
-#define PLATFORM_FW_MAX_SIZE   0x80000
+/*
+ * This just selects somewhat sensible nor offsets. These will change once the
+ * layout is finialized.
+ */
+#define PLATFORM_FW_NOR_OFFSET 0x40000
+#define PLATFORM_FW_MAX_SIZE   0xc0000
+
+#define U_BOOT_ENV_OFFSET      0x20000
+#define U_BOOT_ENV_MAX_SIZE    0x20000
+
+#define ASCALON_FW_NOR_OFFSET  0x100000
+#define ASCALON_FW_MAX_SIZE    0x600000
 
 #endif /* __LAYOUT_H__ */

@@ -48,6 +48,7 @@ The following meson options can be set at build time:
 | Option        | Type    | Default | Description                              |
 |---------------|---------|---------|------------------------------------------|
 | `platform-fw` | string  | `''`    | Platform firmware FIT to add to the NOR  |
+| `ascalon-fw`  | string  | `''`    | Ascalon firmware FIT to add to the NOR   |
 | `frequency`   | integer | `0`     | System clock in Hz. `0` selects 24 MHz.  |
 | `baud     `   | integer | `9600`  | Console baud rate.                       |
 | `platform`    | combo   | `silicon` | `silicon` (also QEMU), `haps-boot` or `haps-pcie` |
@@ -65,7 +66,8 @@ Build outputs are produced in the build/ directory:
 - `hilt.simg` - a simg of hilt.bin
 - `platform-fw.fit` - a placeholder platform-fw FIT, built when no
   `platform-fw` is given. Needs U-Boot's `binman` on `PATH`.
-- `nor.img` - 32 MiB NOR flash image holding hilt.simg and the platform-fw FIT
+- `nor.img` - 32 MiB NOR flash image holding hilt.simg, the platform-fw FIT
+  and, when `ascalon-fw` is given, the ascalon-fw FIT
 - `hilt-rom.bin` / `hilt-rom.elf` - bootrom image
 - `hilt-rom_h.hex` / `hilt-rom_l.hex` - bootrom memory files for HAPs
 
