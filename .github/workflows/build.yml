@@ -8,6 +8,12 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  release:
+    types: [published]
+
+# Read-only by default. Only the release job below gets a write token.
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -15,6 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Install toolchain and build tools
@@ -48,3 +55,29 @@ jobs:
             build/hilt-rom.bin
             build/hilt-rom.map
           if-no-files-found: error
+
+  # On a published release, attach the images the build job produced from the
+  # release tag. The job just downloads the artifacts and uploads them.
+  release:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download images
+        uses: actions/download-artifact@v4
+        with:
+          name: hilt-images
+          path: images
+
+      - name: Attach images to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        working-directory: images
+        run: |
+          sha256sum hilt.elf hilt.bin hilt-rom.elf hilt-rom.bin \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" \
+            hilt.elf hilt.bin hilt-rom.elf hilt-rom.bin
