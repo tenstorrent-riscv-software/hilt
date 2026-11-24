@@ -116,6 +116,7 @@ if meson.is_cross_build()
     'src/drivers/flash/spi_nor.c',
     'src/platform/atlantis.c',
     'src/platform/reset.c',
+    'src/platform/clock.c',
     'src/main.c',
     'src/timer.c',
     image_sources,

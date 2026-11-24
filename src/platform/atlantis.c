@@ -4,6 +4,7 @@
  */
 
 #include <platform/atlantis.h>
+#include <platform/clock.h>
 #include <errno.h>
 #include <mmio.h>
 #include <stdio.h>
@@ -18,18 +19,6 @@
 #include <platform/reset.h>
 #include <platform/settings_table.h>
 #include <platform/soc_mmr.h>
-
-static void soc_lsio_set_cg_enable(uint32_t mask, bool enable)
-{
-    uint32_t reg = soc_mmr_read(MMR_SOC_LSIO_BLK_CG);
-    if (enable) {
-        reg |= mask;
-    } else {
-        reg &= ~mask;
-    }
-    soc_mmr_write(MMR_SOC_LSIO_BLK_CG, reg);
-    udelay(CLOCK_GATE_DELAY_US);
-}
 
 /*
  * __is_bootrom is set to 1 by linker script if this image is compiled for
@@ -145,22 +134,6 @@ const char *platform_atlantis_platform_name(void)
     }
 }
 
-static uint64_t uart_clock_frequency(void)
-{
-    return boot_settings.frequency;
-}
-
-static uint64_t rcpu_clock_frequency(void)
-{
-    return boot_settings.frequency;
-}
-
-/* The QSPI reference clock is the NOCC clock. */
-static uint64_t qspi_clock_frequency(void)
-{
-    return boot_settings.frequency;
-}
-
 #define UART0_BASE 0x48100000U
 #define QSPI0_BASE 0x4A000000U
 
@@ -224,15 +197,16 @@ const char *platform_atlantis_boot_cause_name(void)
 
 int platform_atlantis_init(void)
 {
-    time_init(rcpu_clock_frequency());
+    time_init(rcpu_clock_frequency(boot_settings.frequency));
 
     reset_bus_release(SOC_BUS_RSTN_NOCC_CLK);
 
-    soc_lsio_set_cg_enable(SOC_LSIO_BLK_CG_UART0, true);
+    clock_lsio_set_cg_enable(SOC_LSIO_BLK_CG_UART0, true);
     reset_lsio_release(SOC_LSIO_BLK_RST_UART0);
 
     /* Ignore failing uart_init for now until postcodes are added */
-    uart_dw_16550_init(UART0_BASE, uart_clock_frequency(), boot_settings.baud);
+    uart_dw_16550_init(UART0_BASE, uart_clock_frequency(boot_settings.frequency),
+                       boot_settings.baud);
 
     /*
      * Initialize the console even if uart_init failed to prevent printf()
@@ -242,7 +216,7 @@ int platform_atlantis_init(void)
 
     /* The bootrom has already done this on a NOR boot; repeating it is harmless. */
     if (get_boot_mode() == SOC_RCPU_BOOT_MODE_SEL_NOR) {
-        soc_lsio_set_cg_enable(SOC_LSIO_BLK_CG_QSPI, true);
+        clock_lsio_set_cg_enable(SOC_LSIO_BLK_CG_QSPI, true);
         reset_lsio_release(SOC_LSIO_BLK_RST_QSPI);
     }
 
@@ -253,7 +227,7 @@ static int nor_init(struct dwc_ssi *ssi, struct spi_nor *nor)
 {
     int rc;
 
-    rc = dwc_ssi_init(ssi, QSPI0_BASE, qspi_clock_frequency(),
+    rc = dwc_ssi_init(ssi, QSPI0_BASE, qspi_clock_frequency(boot_settings.frequency),
                           QSPI_MAX_SCLK_HZ, QSPI_FIFO_DEPTH);
     if (rc) {
         return rc;
