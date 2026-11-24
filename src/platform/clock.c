@@ -28,6 +28,36 @@ void clock_lsio_set_cg_enable(uint32_t mask, bool enable)
     clock_set_cg_enable(SOC_MMR_BASE + MMR_SOC_LSIO_BLK_CG, mask, enable);
 }
 
+void clock_bus_set_cg_enable(uint32_t mask, bool enable)
+{
+    clock_set_cg_enable(SOC_MMR_BASE + MMR_SOC_BUS_CG, mask, enable);
+}
+
+void clock_rcpu_set_cg_enable(uint32_t mask, bool enable)
+{
+    clock_set_cg_enable(SOC_MMR_BASE + MMR_SOC_RCPU_BLK_CG, mask, enable);
+}
+
+void clock_mm_set_cg_enable(uint32_t mask, bool enable)
+{
+    clock_set_cg_enable(MM_CTRL_BASE + MMR_MM_CLK_GATE_CFG, mask, enable);
+}
+
+void clock_hsio_set_cg_enable(uint32_t mask, bool enable)
+{
+    clock_set_cg_enable(HSIO_CTRL_BASE + MMR_HSIO_BLK_CG, mask, enable);
+}
+
+void clock_gmac_set_cg_enable(uint32_t mask, bool enable)
+{
+    clock_set_cg_enable(HSIO_CTRL_BASE + MMR_HSIO_GMAC_CRG_CFG, mask, enable);
+}
+
+void clock_pcie_set_cg_enable(uint32_t mask, bool enable)
+{
+    clock_set_cg_enable(PCIE_MMR_BASE + MMR_PCIE_SUBS_CG_CTL, mask, enable);
+}
+
 uint64_t uart_clock_frequency(uint32_t osc_frequency)
 {
     return osc_frequency;

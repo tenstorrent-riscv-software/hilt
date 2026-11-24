@@ -199,10 +199,10 @@ int platform_atlantis_init(void)
 {
     time_init(rcpu_clock_frequency(boot_settings.frequency));
 
-    reset_bus_release(SOC_BUS_RSTN_NOCC_CLK);
+    reset_bus_set(SOC_BUS_RSTN_NOCC_CLK, false);
 
     clock_lsio_set_cg_enable(SOC_LSIO_BLK_CG_UART0, true);
-    reset_lsio_release(SOC_LSIO_BLK_RST_UART0);
+    reset_lsio_set(SOC_LSIO_BLK_RST_UART0, false);
 
     /* Ignore failing uart_init for now until postcodes are added */
     uart_dw_16550_init(UART0_BASE, uart_clock_frequency(boot_settings.frequency),
@@ -217,7 +217,7 @@ int platform_atlantis_init(void)
     /* The bootrom has already done this on a NOR boot; repeating it is harmless. */
     if (get_boot_mode() == SOC_RCPU_BOOT_MODE_SEL_NOR) {
         clock_lsio_set_cg_enable(SOC_LSIO_BLK_CG_QSPI, true);
-        reset_lsio_release(SOC_LSIO_BLK_RST_QSPI);
+        reset_lsio_set(SOC_LSIO_BLK_RST_QSPI, false);
     }
 
     return 0;

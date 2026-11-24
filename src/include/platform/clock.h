@@ -11,7 +11,20 @@
 
 #include <types.h>
 
+/* Release clock gating for different subsystems */
 void clock_lsio_set_cg_enable(uint32_t mask, bool enable);
+
+void clock_bus_set_cg_enable(uint32_t mask, bool enable);
+
+void clock_rcpu_set_cg_enable(uint32_t mask, bool enable);
+
+void clock_mm_set_cg_enable(uint32_t mask, bool enable);
+
+void clock_hsio_set_cg_enable(uint32_t mask, bool enable);
+
+void clock_gmac_set_cg_enable(uint32_t mask, bool enable);
+
+void clock_pcie_set_cg_enable(uint32_t mask, bool enable);
 
 /* Reference clock of the UARTs, the NOCC clock */
 uint64_t uart_clock_frequency(uint32_t osc_frequency);

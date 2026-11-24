@@ -13,17 +13,19 @@
 
 #include <types.h>
 
+/* Setting assert to true puts the device in reset, false release the reset */
+
 /* Bus resets, SOC_BUS_RSTN_* */
-void reset_bus_release(uint32_t mask);
+void reset_bus_set(uint32_t mask, bool assert);
 
 /* LSIO peripheral resets, SOC_LSIO_BLK_RST_* */
-void reset_lsio_release(uint32_t mask);
+void reset_lsio_set(uint32_t mask, bool assert);
 
 /* RCPU peripheral resets, SOC_RCPU_BLK_RST_* */
-void reset_rcpu_release(uint32_t mask);
+void reset_rcpu_set(uint32_t mask, bool assert);
 
 /* The APLIC reset */
-void reset_aplic_release(void);
+void reset_aplic_set(bool assert);
 
 /*
  * The mm, hsio, and gmc registers are behind the mm and hsio buses. The bus
@@ -31,15 +33,15 @@ void reset_aplic_release(void);
  */
 
 /* MM block resets, MM_RSTN_* */
-void reset_mm_release(uint32_t mask);
+void reset_mm_set(uint32_t mask, bool assert);
 
 /* HSIO block resets, HSIO_BLK_RST_* */
-void reset_hsio_release(uint32_t mask);
+void reset_hsio_set(uint32_t mask, bool assert);
 
 /* GMAC resets, HSIO_GMAC_CRG_CFG_GMAC*_XRSTN */
-void reset_gmac_release(uint32_t mask);
+void reset_gmac_set(uint32_t mask, bool assert);
 
 /* PCIe subsystem resets, PCIE_SUBS_RST_CTL_* */
-void reset_pcie_release(uint32_t mask);
+void reset_pcie_set(uint32_t mask, bool assert);
 
 #endif /* __PLATFORM_RESET_H__ */

@@ -22,6 +22,19 @@
 #define   SOC_RCPU_DIV_CFG_CLK_SEL (1U << 0) /* 0: oscillator, 1: PLL */
 /* reserved 0x10 */
 #define MMR_SOC_RCPU_BLK_CG              0x014
+#define   SOC_RCPU_BLK_CG_DMA0           (1U << 0)
+#define   SOC_RCPU_BLK_CG_DMA1           (1U << 1)
+#define   SOC_RCPU_BLK_CG_WDT0           (1U << 2)
+#define   SOC_RCPU_BLK_CG_WDT1           (1U << 3)
+#define   SOC_RCPU_BLK_CG_TMR            (1U << 4)
+#define   SOC_RCPU_BLK_CG_PVTC           (1U << 12)
+#define   SOC_RCPU_BLK_CG_PMU            (1U << 13)
+#define   SOC_RCPU_BLK_CG_IPC            (1U << 14)
+#define   SOC_RCPU_BLK_CG_SPACC          (1U << 26)
+#define   SOC_RCPU_BLK_CG_OTP            (1U << 28)
+#define   SOC_RCPU_BLK_CG_TRNG           (1U << 29)
+#define   SOC_RCPU_BLK_CG_CRC            (1U << 30)
+#define   SOC_RCPU_BLK_CG_ALL            0x7400701fU
 #define MMR_SOC_LSIO_BLK_CG              0x018
 #define   SOC_LSIO_BLK_CG_QSPI           (1U << 0)
 #define   SOC_LSIO_BLK_CG_I2C0           (1U << 1)
@@ -43,6 +56,7 @@
 #define   SOC_LSIO_BLK_CG_CAN1           (1U << 18)
 #define   SOC_LSIO_BLK_CG_I2S0           (1U << 19)
 #define   SOC_LSIO_BLK_CG_I2S1           (1U << 20)
+#define   SOC_LSIO_BLK_CG_ALL            0x001effffU
 #define MMR_SOC_RCPU_BLK_RST             0x01C
 #define   SOC_RCPU_BLK_RST_DMA0          (1U << 0)
 #define   SOC_RCPU_BLK_RST_DMA1          (1U << 1)
@@ -265,6 +279,37 @@
 #define PCIE_MMR_BASE   0xA8000000
 #define MM_MMR_BASE     0xB0000000
 #define HSIO_MMR_BASE   0xB40C0000
+
+/* MM subsystem control block */
+#define MM_CTRL_BASE                     0xB0000000
+#define MMR_MM_CLK_GATE_CFG              0x008
+#define   MM_CLK_GATE_CFG_DSIO_VO        (1U << 0)
+#define   MM_CLK_GATE_CFG_VPU            (1U << 1)
+#define   MM_CLK_GATE_CFG_DSI            (1U << 2)
+#define   MM_CLK_GATE_CFG_HDMI           (1U << 3)
+#define   MM_CLK_GATE_CFG_DSICFG         (1U << 4)
+#define   MM_CLK_GATE_CFG_HDMI_VO        (1U << 5)
+#define   MM_CLK_GATE_CFG_GPU            (1U << 7)
+#define   MM_CLK_GATE_CFG_ALL            0x000000bfU
+
+/* HSIO subsystem control block */
+#define HSIO_CTRL_BASE                   0xB40C0000
+#define MMR_HSIO_BLK_CG                  0x008
+#define   HSIO_BLK_CG_EMMC0              (1U << 0)
+#define   HSIO_BLK_CG_EMMC1              (1U << 1)
+#define   HSIO_BLK_CG_SDIO0              (1U << 2)
+#define   HSIO_BLK_CG_SDIO1              (1U << 3)
+#define   HSIO_BLK_CG_DMA0               (1U << 6)
+#define   HSIO_BLK_CG_DMA1               (1U << 7)
+#define   HSIO_BLK_CG_U2C0               (1U << 8)
+#define   HSIO_BLK_CG_U2C1               (1U << 9)
+#define   HSIO_BLK_CG_U3C0               (1U << 10)
+#define   HSIO_BLK_CG_U3C1               (1U << 11)
+#define   HSIO_BLK_CG_ALL                0x00000fcfU
+#define MMR_HSIO_GMAC_CRG_CFG            0x010
+#define   HSIO_GMAC_CRG_CFG_GMAC0_XCLK   (1U << 2)
+#define   HSIO_GMAC_CRG_CFG_GMAC1_XCLK   (1U << 3)
+#define   HSIO_GMAC_CRG_CFG_XCLK_ALL     0x0000000cU
 
 #define CLOCK_GATE_DELAY_US 1000
 
