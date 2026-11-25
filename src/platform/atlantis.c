@@ -145,6 +145,12 @@ const char *platform_atlantis_platform_name(void)
 #define QSPI_MAX_SCLK_HZ 25000000U
 #define QSPI_FIFO_DEPTH  256
 
+static bool is_haps(void)
+{
+    return boot_settings.platform == PLATFORM_HAPS_BOOT ||
+           boot_settings.platform == PLATFORM_HAPS_PCIE;
+}
+
 static uint32_t get_boot_mode(void)
 {
     uint32_t reg = soc_mmr_read(MMR_SOC_RCPU_BOOT_MODE);
@@ -195,14 +201,30 @@ const char *platform_atlantis_boot_cause_name(void)
     }
 }
 
+void clock_init(void)
+{
+    if (platform_atlantis_is_bootrom()) {
+        /* bootrom only enables the bareminimum */
+        uint8_t mode = get_boot_mode();
+        if (mode == SOC_RCPU_BOOT_MODE_SEL_NOR) {
+            clock_lsio_set_cg_enable(SOC_LSIO_BLK_CG_QSPI, true);
+            reset_lsio_set(SOC_LSIO_BLK_RST_QSPI, false);
+        }
+        return;
+    }
+}
+
 int platform_atlantis_init(void)
 {
-    time_init(rcpu_clock_frequency(boot_settings.frequency));
+    int rcpu_rc;
+    time_init(rcpu_clock_frequency(boot_settings.frequency, is_haps()));
 
     reset_bus_set(SOC_BUS_RSTN_NOCC_CLK, false);
 
     clock_lsio_set_cg_enable(SOC_LSIO_BLK_CG_UART0, true);
     reset_lsio_set(SOC_LSIO_BLK_RST_UART0, false);
+
+    rcpu_rc = clock_rcpu_init(boot_settings.frequency, is_haps());
 
     /* Ignore failing uart_init for now until postcodes are added */
     uart_dw_16550_init(UART0_BASE, uart_clock_frequency(boot_settings.frequency),
@@ -214,11 +236,12 @@ int platform_atlantis_init(void)
      */
     console_init(UART0_BASE);
 
-    /* The bootrom has already done this on a NOR boot; repeating it is harmless. */
-    if (get_boot_mode() == SOC_RCPU_BOOT_MODE_SEL_NOR) {
-        clock_lsio_set_cg_enable(SOC_LSIO_BLK_CG_QSPI, true);
-        reset_lsio_set(SOC_LSIO_BLK_RST_QSPI, false);
+    /* Print the rcpu error now that uart is up */
+    if (rcpu_rc) {
+        printf("Failure initializing the RCPU clocks rc=%d\n", rcpu_rc);
     }
+
+    clock_init();
 
     return 0;
 }

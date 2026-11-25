@@ -14,12 +14,15 @@
 
 #define MMR_SOC_PLL_RCPU_CFG             0x000
 #define MMR_SOC_PLL_NOCC_CFG             0x004
+/*
+ * NOCC and RCPU both use SOC_CFG_CLK_SEL, the register use the bit and allows
+ * for generic clock select code.
+ */
 #define MMR_SOC_NOCC_CLK_CFG             0x008
-#define   SOC_NOCC_CLK_CFG_CLK_SEL    (1U << 0) /* 0: oscillator, 1: PLL */
+#define   SOC_CFG_CLK_SEL             (1U << 0) /* 0: oscillator, 1: PLL */
 #define   SOC_NOCC_CLK_CFG_DIV4_SHIFT 5
 #define   SOC_NOCC_CLK_CFG_DIV4_MASK  (0xfU << SOC_NOCC_CLK_CFG_DIV4_SHIFT)
 #define MMR_SOC_RCPU_DIV_CFG             0x00C
-#define   SOC_RCPU_DIV_CFG_CLK_SEL (1U << 0) /* 0: oscillator, 1: PLL */
 /* reserved 0x10 */
 #define MMR_SOC_RCPU_BLK_CG              0x014
 #define   SOC_RCPU_BLK_CG_DMA0           (1U << 0)
