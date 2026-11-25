@@ -15,20 +15,9 @@
 #include <image/boot_image.h>
 #include <image/simg.h>
 #include <platform/layout.h>
+#include <platform/reset.h>
 #include <platform/settings_table.h>
 #include <platform/soc_mmr.h>
-
-static void soc_nocc_bus_reset_release(void)
-{
-    uint32_t reg = soc_mmr_read(MMR_SOC_BUS_RSTN);
-    soc_mmr_write(MMR_SOC_BUS_RSTN, reg | SOC_BUS_RSTN_NOCC_CLK);
-}
-
-static void soc_lsio_reset_release(uint32_t mask)
-{
-    uint32_t reg = soc_mmr_read(MMR_SOC_LSIO_BLK_RST);
-    soc_mmr_write(MMR_SOC_LSIO_BLK_RST, reg | mask);
-}
 
 static void soc_lsio_set_cg_enable(uint32_t mask, bool enable)
 {
@@ -237,10 +226,10 @@ int platform_atlantis_init(void)
 {
     time_init(rcpu_clock_frequency());
 
-    soc_nocc_bus_reset_release();
+    reset_bus_release(SOC_BUS_RSTN_NOCC_CLK);
 
     soc_lsio_set_cg_enable(SOC_LSIO_BLK_CG_UART0, true);
-    soc_lsio_reset_release(SOC_LSIO_BLK_RST_UART0);
+    reset_lsio_release(SOC_LSIO_BLK_RST_UART0);
 
     /* Ignore failing uart_init for now until postcodes are added */
     uart_dw_16550_init(UART0_BASE, uart_clock_frequency(), boot_settings.baud);
@@ -254,7 +243,7 @@ int platform_atlantis_init(void)
     /* The bootrom has already done this on a NOR boot; repeating it is harmless. */
     if (get_boot_mode() == SOC_RCPU_BOOT_MODE_SEL_NOR) {
         soc_lsio_set_cg_enable(SOC_LSIO_BLK_CG_QSPI, true);
-        soc_lsio_reset_release(SOC_LSIO_BLK_RST_QSPI);
+        reset_lsio_release(SOC_LSIO_BLK_RST_QSPI);
     }
 
     return 0;

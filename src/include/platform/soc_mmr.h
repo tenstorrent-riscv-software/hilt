@@ -255,7 +255,14 @@
 #define   HSIO_GMAC_CRG_CFG_GMAC1_XRSTN  (1U << 1)
 #define   HSIO_GMAC_CRG_CFG_XRSTN_ALL    0x00000003U
 
+/* PCIe subsystem control block */
+#define MMR_PCIE_SUBS_RST_CTL            0x000
+#define   PCIE_SUBS_RST_CTL_ALL          0x000007ffU
+#define MMR_PCIE_SUBS_CG_CTL             0x004
+#define   PCIE_SUBS_CG_CTL_ALL           0x0000ffffU
+
 #define SOC_MMR_BASE    0x40000000
+#define PCIE_MMR_BASE   0xA8000000
 #define MM_MMR_BASE     0xB0000000
 #define HSIO_MMR_BASE   0xB40C0000
 
@@ -269,6 +276,17 @@ static inline uint32_t soc_mmr_read(unsigned int reg)
 static inline void soc_mmr_write(unsigned int reg, uint32_t val)
 {
     mmio_write32(SOC_MMR_BASE + reg, val);
+}
+
+/* The PCIe bus has to be out of reset and clocked for these to complete. */
+static inline uint32_t pcie_mmr_read(unsigned int reg)
+{
+    return mmio_read32(PCIE_MMR_BASE + reg);
+}
+
+static inline void pcie_mmr_write(unsigned int reg, uint32_t val)
+{
+    mmio_write32(PCIE_MMR_BASE + reg, val);
 }
 
 /* The MM bus has to be out of reset and clocked for these to complete. */
