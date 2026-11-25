@@ -216,10 +216,45 @@ int clock_mm_init(void)
                         SOC_BUS_CG_MM, &mm_pll_dividers);
 }
 
+/* Divider values for the 800 MHz HSIO PLL: each divides by its value plus one */
+#define HSIO_DIV2_DVALUE    1  /* 400 MHz */
+#define HSIO_DIV4_DVALUE    1
+#define HSIO_RTC_DVALUE     23
+#define HSIO_CARD_CC_DVALUE 7  /* 100 MHz eMMC and SDIO card clocks */
+
 int clock_hsio_init(void)
 {
-    return bus_pll_init(MMR_SOC_PLL_HSIO_CFG, MMR_SOC_PLL_HSIO_EN, SOC_BUS_RSTN_HSIO_CLK,
-                        SOC_BUS_CG_HSIO, &hsio_pll_dividers);
+    uint32_t reg;
+    int rc;
+
+    rc = bus_pll_init(MMR_SOC_PLL_HSIO_CFG, MMR_SOC_PLL_HSIO_EN, SOC_BUS_RSTN_HSIO_CLK,
+                      SOC_BUS_CG_HSIO, &hsio_pll_dividers);
+    if (rc) {
+        /* The divider registers are behind the HSIO bus, which is not clocked. */
+        return rc;
+    }
+
+    reg = hsio_mmr_read(MMR_HSIO_DIV_CFG);
+    reg &= ~(HSIO_DIV_CFG_DIV2_MASK | HSIO_DIV_CFG_DIV4_MASK | HSIO_DIV_CFG_RTC_MASK |
+             HSIO_DIV_CFG_EMMC0_CC_MASK | HSIO_DIV_CFG_EMMC1_CC_MASK |
+             HSIO_DIV_CFG_SDIO0_CC_MASK);
+    reg |= HSIO_DIV2_DVALUE << HSIO_DIV_CFG_DIV2_SHIFT;
+    reg |= HSIO_DIV4_DVALUE << HSIO_DIV_CFG_DIV4_SHIFT;
+    reg |= HSIO_RTC_DVALUE << HSIO_DIV_CFG_RTC_SHIFT;
+    reg |= HSIO_CARD_CC_DVALUE << HSIO_DIV_CFG_EMMC0_CC_SHIFT;
+    reg |= HSIO_CARD_CC_DVALUE << HSIO_DIV_CFG_EMMC1_CC_SHIFT;
+    reg |= HSIO_CARD_CC_DVALUE << HSIO_DIV_CFG_SDIO0_CC_SHIFT;
+    hsio_mmr_write(MMR_HSIO_DIV_CFG, reg);
+
+    /* Run the eMMC and SDIO card clocks from their dividers off the PLL. */
+    reg = hsio_mmr_read(MMR_HSIO_DIV_CFG1);
+    reg &= ~HSIO_DIV_CFG1_SDIO1_CC_MASK;
+    reg |= HSIO_CARD_CC_DVALUE << HSIO_DIV_CFG1_SDIO1_CC_SHIFT;
+    reg |= HSIO_DIV_CFG1_EMMC0_CC_CLK_SEL | HSIO_DIV_CFG1_EMMC1_CC_CLK_SEL |
+           HSIO_DIV_CFG1_SDIO0_CC_CLK_SEL | HSIO_DIV_CFG1_SDIO1_CC_CLK_SEL;
+    hsio_mmr_write(MMR_HSIO_DIV_CFG1, reg);
+
+    return 0;
 }
 
 int clock_pcie_init(void)

@@ -331,6 +331,28 @@
 
 /* HSIO subsystem control block */
 #define HSIO_CTRL_BASE                   0xB40C0000
+/* Each divider divides by its value plus one */
+#define MMR_HSIO_DIV_CFG                 0x000
+#define   HSIO_DIV_CFG_DIV2_SHIFT        0
+#define   HSIO_DIV_CFG_DIV2_MASK         (0xfU << HSIO_DIV_CFG_DIV2_SHIFT)
+#define   HSIO_DIV_CFG_DIV4_SHIFT        4
+#define   HSIO_DIV_CFG_DIV4_MASK         (0xfU << HSIO_DIV_CFG_DIV4_SHIFT)
+#define   HSIO_DIV_CFG_RTC_SHIFT         8
+#define   HSIO_DIV_CFG_RTC_MASK          (0x3fU << HSIO_DIV_CFG_RTC_SHIFT)
+#define   HSIO_DIV_CFG_EMMC0_CC_SHIFT    14
+#define   HSIO_DIV_CFG_EMMC0_CC_MASK     (0x3fU << HSIO_DIV_CFG_EMMC0_CC_SHIFT)
+#define   HSIO_DIV_CFG_EMMC1_CC_SHIFT    20
+#define   HSIO_DIV_CFG_EMMC1_CC_MASK     (0x3fU << HSIO_DIV_CFG_EMMC1_CC_SHIFT)
+#define   HSIO_DIV_CFG_SDIO0_CC_SHIFT    26
+#define   HSIO_DIV_CFG_SDIO0_CC_MASK     (0x3fU << HSIO_DIV_CFG_SDIO0_CC_SHIFT)
+#define MMR_HSIO_DIV_CFG1                0x004
+#define   HSIO_DIV_CFG1_SDIO1_CC_SHIFT   0
+#define   HSIO_DIV_CFG1_SDIO1_CC_MASK    (0x3fU << HSIO_DIV_CFG1_SDIO1_CC_SHIFT)
+/* Card clock source, 0: the RTC divider, 1: the card clock divider off the PLL */
+#define   HSIO_DIV_CFG1_EMMC0_CC_CLK_SEL (1U << 6)
+#define   HSIO_DIV_CFG1_EMMC1_CC_CLK_SEL (1U << 7)
+#define   HSIO_DIV_CFG1_SDIO0_CC_CLK_SEL (1U << 8)
+#define   HSIO_DIV_CFG1_SDIO1_CC_CLK_SEL (1U << 9)
 #define MMR_HSIO_BLK_CG                  0x008
 #define   HSIO_BLK_CG_EMMC0              (1U << 0)
 #define   HSIO_BLK_CG_EMMC1              (1U << 1)
