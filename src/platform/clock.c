@@ -331,10 +331,26 @@ static int asc_pll_init(uint32_t cfg, uint32_t stat, const struct pll_dividers *
     return 0;
 }
 
+static void asc_force_ref_clock(bool force)
+{
+    uint32_t reg = asc_mmr_read(MMR_ASC_CL_CFG);
+
+    if (force) {
+        reg &= ~ASC_CL_CFG_FORCE_SS_TO_REF_CLOCK_N;
+    } else {
+        reg |= ASC_CL_CFG_FORCE_SS_TO_REF_CLOCK_N;
+    }
+    asc_mmr_write(MMR_ASC_CL_CFG, reg);
+}
+
 int clock_asc_init(void)
 {
+    uint64_t timeout;
     int fb_rc;
     int sc_rc;
+
+    /* Run all Ascalon clocks from the reference clock while they are set up. */
+    asc_force_ref_clock(true);
 
     /* Run the FB clock from the reference clock while its PLL is set up. */
     asc_mmr_write(MMR_ASC_SS_FB_CLK_MUX,
@@ -350,6 +366,25 @@ int clock_asc_init(void)
     /* The SC PLL does not depend on the FB one, so it is set up either way. */
     sc_rc = asc_pll_init(MMR_ASC_SC_PLL_CFG, MMR_ASC_SC_PLL_STAT, &asc_sc_pll_dividers,
                          0);
+
+    asc_mmr_write(MMR_ASC_MMCAB_CFG0, ASC_MMCAB_CFG0_DEFAULT);
+
+    /* Open all Ascalon subsystem clock gates */
+    asc_mmr_write(MMR_ASC_SS_CLK_CG, ASC_SS_CLK_CG_ALL);
+
+    /* Wait for the subsystem to come out of its soft reset. */
+    if (asc_mmr_read(MMR_ASC_VERSION_ID) >= ASC_VERSION_ID_SFT_RST_DONE) {
+        timeout_start(&timeout, PLL_LOCK_TIMEOUT_US);
+        while (!(asc_mmr_read(MMR_ASC_CL_STAT) & ASC_CL_STAT_SFT_RST_DONE)) {
+            if (timeout_expired(&timeout)) {
+                /* The clocks are left on the reference clock. */
+                return -ETIMEDOUT;
+            }
+        }
+    }
+
+    /* Switch the Ascalon clocks to their own source */
+    asc_force_ref_clock(false);
 
     return fb_rc ? fb_rc : sc_rc;
 }

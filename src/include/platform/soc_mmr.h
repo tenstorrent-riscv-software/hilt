@@ -283,8 +283,24 @@
 #define MMR_ASC_SC_PLL_STAT              0x008
 #define MMR_ASC_FB_PLL_CFG               0x010
 #define MMR_ASC_FB_PLL_STAT              0x018
+#define MMR_ASC_SS_CLK_CG                0x020
+#define   ASC_SS_CLK_CG_MMCAB            (1U << 0)
+#define   ASC_SS_CLK_CG_FB               (1U << 1)
+#define   ASC_SS_CLK_CG_SC               (1U << 2)
+#define   ASC_SS_CLK_CG_REF              (1U << 3)
+#define   ASC_SS_CLK_CG_ALL              0x0000000fU
 #define MMR_ASC_SS_FB_CLK_MUX            0x028
 #define   ASC_SS_FB_CLK_MUX_FB_PLL       (1U << 0) /* 0: reference clock, 1: FB PLL */
+#define MMR_ASC_CL_CFG                   0x050
+/* 0: all Ascalon clocks run from the reference clock, 1: from their own source */
+#define   ASC_CL_CFG_FORCE_SS_TO_REF_CLOCK_N (1U << 7)
+#define MMR_ASC_CL_STAT                  0x060
+#define   ASC_CL_STAT_SFT_RST_DONE       (1U << 1)
+#define MMR_ASC_MMCAB_CFG0               0x080
+#define   ASC_MMCAB_CFG0_DEFAULT         0x0000013fU
+#define MMR_ASC_VERSION_ID               0x300
+/* First version of the block that reports ASC_CL_STAT_SFT_RST_DONE */
+#define   ASC_VERSION_ID_SFT_RST_DONE    0x20260128U
 
 #define SOC_MMR_BASE    0x40000000
 #define PCIE_MMR_BASE   0xA8000000
