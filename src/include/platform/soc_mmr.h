@@ -44,6 +44,19 @@
 #define   SOC_LSIO_BLK_CG_I2S0           (1U << 19)
 #define   SOC_LSIO_BLK_CG_I2S1           (1U << 20)
 #define MMR_SOC_RCPU_BLK_RST             0x01C
+#define   SOC_RCPU_BLK_RST_DMA0          (1U << 0)
+#define   SOC_RCPU_BLK_RST_DMA1          (1U << 1)
+#define   SOC_RCPU_BLK_RST_WDT0          (1U << 2)
+#define   SOC_RCPU_BLK_RST_WDT1          (1U << 3)
+#define   SOC_RCPU_BLK_RST_TMR           (1U << 4)
+#define   SOC_RCPU_BLK_RST_PVTC          (1U << 12)
+#define   SOC_RCPU_BLK_RST_PMU           (1U << 13)
+#define   SOC_RCPU_BLK_RST_IPC           (1U << 14)
+#define   SOC_RCPU_BLK_RST_SPACC         (1U << 26)
+#define   SOC_RCPU_BLK_RST_OTP           (1U << 28)
+#define   SOC_RCPU_BLK_RST_TRNG          (1U << 29)
+#define   SOC_RCPU_BLK_RST_CRC           (1U << 30)
+#define   SOC_RCPU_BLK_RST_ALL           0x7400701fU
 #define MMR_SOC_LSIO_BLK_RST             0x020
 #define   SOC_LSIO_BLK_RST_QSPI          (1U << 0)
 #define   SOC_LSIO_BLK_RST_I2C0          (1U << 1)
@@ -65,6 +78,7 @@
 #define   SOC_LSIO_BLK_RST_CAN1          (1U << 18)
 #define   SOC_LSIO_BLK_RST_I2S0          (1U << 19)
 #define   SOC_LSIO_BLK_RST_I2S1          (1U << 20)
+#define   SOC_LSIO_BLK_RST_ALL           0x001effffU
 #define MMR_SOC_GLOBAL_SOFT_RST          0x024
 #define MMR_SOC_RCPU_BOOT_ADDR           0x028
 #define MMR_SOC_RCPU_MTVEC_ADDR          0x02C
@@ -203,6 +217,7 @@
 #define MMR_SOC_LSIO_PMU_STATUS_1        0x2B4
 /* reserved 0x2B8-0x2FC */
 #define MMR_SOC_APLIC_BLK_RST            0x300
+#define   SOC_APLIC_BLK_RST_APLIC        (1U << 0)
 /* reserved 0x304-0x3FC */
 #define MMR_SOC_DFD_TOP_CTRL             0x400
 #define MMR_SOC_DFD_TOP_ASC_OCC          0x404
@@ -211,7 +226,38 @@
 #define MMR_SOC_DFD_TOP_MM_IOMMU_OCC     0x410
 #define MMR_SOC_DFD_TOP_HSIO_IOMMU_OCC   0x414
 
+/* MM subsystem control block */
+#define MMR_MM_RSTN                      0x014
+#define   MM_RSTN_DSIO_VO                (1U << 0)
+#define   MM_RSTN_VPU_BUS                (1U << 1)
+#define   MM_RSTN_DSI                    (1U << 2)
+#define   MM_RSTN_HDMI                   (1U << 3)
+#define   MM_RSTN_GPU_CORE               (1U << 4)
+#define   MM_RSTN_HDMI_VO                (1U << 5)
+#define   MM_RSTN_VPU_CORE               (1U << 6)
+#define   MM_RSTN_ALL                    0x0000007fU
+
+/* HSIO subsystem control block */
+#define MMR_HSIO_BLK_RST                 0x00C
+#define   HSIO_BLK_RST_EMMC0             (1U << 0)
+#define   HSIO_BLK_RST_EMMC1             (1U << 1)
+#define   HSIO_BLK_RST_SDIO0             (1U << 2)
+#define   HSIO_BLK_RST_SDIO1             (1U << 3)
+#define   HSIO_BLK_RST_DMA0              (1U << 6)
+#define   HSIO_BLK_RST_DMA1              (1U << 7)
+#define   HSIO_BLK_RST_U2C0              (1U << 8)
+#define   HSIO_BLK_RST_U2C1              (1U << 9)
+#define   HSIO_BLK_RST_U3C0              (1U << 10)
+#define   HSIO_BLK_RST_U3C1              (1U << 11)
+#define   HSIO_BLK_RST_ALL               0x00000fcfU
+#define MMR_HSIO_GMAC_CRG_CFG            0x010
+#define   HSIO_GMAC_CRG_CFG_GMAC0_XRSTN  (1U << 0)
+#define   HSIO_GMAC_CRG_CFG_GMAC1_XRSTN  (1U << 1)
+#define   HSIO_GMAC_CRG_CFG_XRSTN_ALL    0x00000003U
+
 #define SOC_MMR_BASE    0x40000000
+#define MM_MMR_BASE     0xB0000000
+#define HSIO_MMR_BASE   0xB40C0000
 
 #define CLOCK_GATE_DELAY_US 1000
 
@@ -223,6 +269,28 @@ static inline uint32_t soc_mmr_read(unsigned int reg)
 static inline void soc_mmr_write(unsigned int reg, uint32_t val)
 {
     mmio_write32(SOC_MMR_BASE + reg, val);
+}
+
+/* The MM bus has to be out of reset and clocked for these to complete. */
+static inline uint32_t mm_mmr_read(unsigned int reg)
+{
+    return mmio_read32(MM_MMR_BASE + reg);
+}
+
+static inline void mm_mmr_write(unsigned int reg, uint32_t val)
+{
+    mmio_write32(MM_MMR_BASE + reg, val);
+}
+
+/* The HSIO bus has to be out of reset and clocked for these to complete. */
+static inline uint32_t hsio_mmr_read(unsigned int reg)
+{
+    return mmio_read32(HSIO_MMR_BASE + reg);
+}
+
+static inline void hsio_mmr_write(unsigned int reg, uint32_t val)
+{
+    mmio_write32(HSIO_MMR_BASE + reg, val);
 }
 
 #endif /* __PLATFORM_SOC_MMR_H__ */
