@@ -286,6 +286,70 @@ int clock_nocc_init(void)
     return 0;
 }
 
+/* Check whether a subsystem bus has been enabled */
+static bool bus_enabled(uint32_t bus_rstn, uint32_t bus_cg)
+{
+    return (soc_mmr_read(MMR_SOC_BUS_RSTN) & bus_rstn) &&
+           (soc_mmr_read(MMR_SOC_BUS_CG) & bus_cg);
+}
+
+int clock_device_init(void)
+{
+    /*
+     * The RCPU and LSIO blocks are not behind a bus gate: they also work with
+     * the RCPU and NOCC left running in bypass.
+     */
+    clock_rcpu_set_cg_enable(SOC_RCPU_BLK_CG_ALL, true);
+    clock_lsio_set_cg_enable(SOC_LSIO_BLK_CG_ALL, true);
+
+    /*
+     * Reset every block and release it again, so one that an earlier stage
+     * used does not keep its state. UART0 is left alone: it is the console.
+     */
+    reset_lsio_set(SOC_LSIO_BLK_RST_ALL & ~SOC_LSIO_BLK_RST_UART0, true);
+    reset_rcpu_set(SOC_RCPU_BLK_RST_ALL, true);
+    reset_aplic_set(true);
+
+    reset_rcpu_set(SOC_RCPU_BLK_RST_ALL, false);
+    reset_lsio_set(SOC_LSIO_BLK_RST_ALL, false);
+    reset_aplic_set(false);
+
+    /*
+     * For subsystems that sit on buses that need to be enabled, check they are
+     * enabled before trying to access the registers in the subsystem. This will
+     * result in a bus hang.
+     */
+    if (bus_enabled(SOC_BUS_RSTN_MM_CLK, SOC_BUS_CG_MM)) {
+        clock_mm_set_cg_enable(MM_CLK_GATE_CFG_ALL, true);
+        reset_mm_set(MM_RSTN_ALL, true);
+        reset_mm_set(MM_RSTN_ALL, false);
+    } else {
+        printf("%s mm bus is not enabled, skipping its devices\n", __FILE__);
+    }
+
+    if (bus_enabled(SOC_BUS_RSTN_HSIO_CLK, SOC_BUS_CG_HSIO)) {
+        clock_hsio_set_cg_enable(HSIO_BLK_CG_ALL, true);
+        reset_hsio_set(HSIO_BLK_RST_ALL, true);
+        reset_hsio_set(HSIO_BLK_RST_ALL, false);
+
+        /* The GMACs have their clock gates and resets in a register of their own */
+        clock_gmac_set_cg_enable(HSIO_GMAC_CRG_CFG_XCLK_ALL, true);
+        reset_gmac_set(HSIO_GMAC_CRG_CFG_XRSTN_ALL, false);
+    } else {
+        printf("%s hsio bus is not enabled, skipping its devices\n", __FILE__);
+    }
+
+    if (bus_enabled(SOC_BUS_RSTN_PCIE_CLK, SOC_BUS_CG_PCIE)) {
+        clock_pcie_set_cg_enable(PCIE_SUBS_CG_CTL_ALL, true);
+        reset_pcie_set(PCIE_SUBS_RST_CTL_ALL, true);
+        reset_pcie_set(PCIE_SUBS_RST_CTL_ALL, false);
+    } else {
+        printf("%s pcie bus is not enabled, skipping its devices\n", __FILE__);
+    }
+
+    return 0;
+}
+
 static bool nocc_on_pll(void)
 {
     return soc_mmr_read(MMR_SOC_NOCC_CLK_CFG) & SOC_CFG_CLK_SEL;

@@ -250,6 +250,7 @@ void clock_init(void)
             printf("Failure initializing the PCIE clocks rc=%d\n", rc);
         }
     }
+    clock_device_init();
 }
 
 int platform_atlantis_init(void)
