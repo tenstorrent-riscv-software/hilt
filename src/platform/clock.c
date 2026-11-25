@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <timer.h>
 #include <platform/clock.h>
+#include <platform/reset.h>
 #include <platform/soc_mmr.h>
 
 /* A set bit opens the gate, i.e. the clock runs. */
@@ -71,6 +72,11 @@ struct pll_dividers {
 /* 600 MHz = 24 MHz * 100 / (1 * 4 * 1) */
 static const struct pll_dividers rcpu_pll_dividers = {
     .ref_div = 1, .post_div1 = 4, .post_div2 = 1, .fb_div = 100,
+};
+
+/* 800 MHz = 24 MHz * 100 / (1 * 3 * 1) */
+static const struct pll_dividers nocc_pll_dividers = {
+    .ref_div = 1, .post_div1 = 3, .post_div2 = 1, .fb_div = 100,
 };
 
 /* PLL config register */
@@ -148,6 +154,28 @@ static int pll_init(unsigned long cfg_reg, unsigned long en_reg,
 }
 
 /*
+ * Bring up the PLL of a subsystem that sits behind the bus: release its bus
+ * reset, program the PLL with the bus clock gated, and open the gate once the
+ * PLL has locked. The gate stays closed if the PLL does not lock.
+ */
+static int bus_pll_init(uint32_t cfg, uint32_t en, uint32_t bus_rstn,
+                        uint32_t bus_cg, const struct pll_dividers *div)
+{
+    int rc;
+
+    reset_bus_set(bus_rstn, false);
+    clock_bus_set_cg_enable(bus_cg, false);
+
+    rc = pll_init(SOC_MMR_BASE + cfg, SOC_MMR_BASE + en, div);
+    if (rc) {
+        return rc;
+    }
+
+    clock_bus_set_cg_enable(bus_cg, true);
+    return 0;
+}
+
+/*
  * The RCPU and NOCC have a mux to select PLL or 24MHz oscillator clock. Select
  * the mux for a given config register.
  */
@@ -184,14 +212,52 @@ int clock_rcpu_init(uint32_t osc_frequency, bool haps)
     return 0;
 }
 
-uint64_t uart_clock_frequency(uint32_t osc_frequency)
+int clock_nocc_init(void)
 {
-    return osc_frequency;
+    int rc;
+
+    select_pll(MMR_SOC_NOCC_CLK_CFG, false);
+
+    /*
+     * The platform has most likely already release the bus reset for nocc in
+     * order to enable uart prints. Don't rely on this and re-release the reset
+     */
+    rc = bus_pll_init(MMR_SOC_PLL_NOCC_CFG, MMR_SOC_PLL_NOCC_EN,
+                      SOC_BUS_RSTN_NOCC_CLK, SOC_BUS_CG_NOCC, &nocc_pll_dividers);
+    if (rc) {
+        /* If the PLL failed to lock, leave the nocc running in bypass */
+        return rc;
+    }
+
+    select_pll(MMR_SOC_NOCC_CLK_CFG, true);
+    return 0;
 }
 
-uint64_t qspi_clock_frequency(uint32_t osc_frequency)
+static bool nocc_on_pll(void)
 {
-    return osc_frequency;
+    return soc_mmr_read(MMR_SOC_NOCC_CLK_CFG) & SOC_CFG_CLK_SEL;
+}
+
+static uint64_t nocc_clock_frequency(uint32_t osc_frequency, bool haps)
+{
+    /*
+     * The HAPS models have no PLL: the NOCC clock stays at the oscillator rate
+     * whichever source is selected.
+     */
+    if (haps || !nocc_on_pll()) {
+        return osc_frequency;
+    }
+    return pll_frequency(osc_frequency, &nocc_pll_dividers);
+}
+
+uint64_t uart_clock_frequency(uint32_t osc_frequency, bool haps)
+{
+    return nocc_clock_frequency(osc_frequency, haps);
+}
+
+uint64_t qspi_clock_frequency(uint32_t osc_frequency, bool haps)
+{
+    return nocc_clock_frequency(osc_frequency, haps);
 }
 
 static bool rcpu_on_pll(void)

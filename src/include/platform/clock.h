@@ -29,16 +29,19 @@ void clock_pcie_set_cg_enable(uint32_t mask, bool enable);
 /* Enable the RCPU PLL and run the RCPU off it */
 int clock_rcpu_init(uint32_t osc_frequency, bool haps);
 
+/* Enable the NOCC PLL and run the NOCC off it.*/
+int clock_nocc_init(void);
+
 /*
  * HAPs models have no PLL. Even if the PLL is enabled and selected they will
  * run off the osc_frequency.
  */
 
 /* Reference clock of the UARTs, the NOCC clock */
-uint64_t uart_clock_frequency(uint32_t osc_frequency);
+uint64_t uart_clock_frequency(uint32_t osc_frequency, bool haps);
 
 /* Reference clock of the QSPI controller: the NOCC clock */
-uint64_t qspi_clock_frequency(uint32_t osc_frequency);
+uint64_t qspi_clock_frequency(uint32_t osc_frequency, bool haps);
 
 /* The RCPU can run in bypass off the oscillator or off the PLL at 600MHz */
 uint64_t rcpu_clock_frequency(uint32_t osc_frequency, bool haps);

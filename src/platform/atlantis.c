@@ -216,7 +216,7 @@ void clock_init(void)
 
 int platform_atlantis_init(void)
 {
-    int rcpu_rc;
+    int rcpu_rc, nocc_rc;
     time_init(rcpu_clock_frequency(boot_settings.frequency, is_haps()));
 
     reset_bus_set(SOC_BUS_RSTN_NOCC_CLK, false);
@@ -225,9 +225,10 @@ int platform_atlantis_init(void)
     reset_lsio_set(SOC_LSIO_BLK_RST_UART0, false);
 
     rcpu_rc = clock_rcpu_init(boot_settings.frequency, is_haps());
+    nocc_rc = clock_nocc_init();
 
     /* Ignore failing uart_init for now until postcodes are added */
-    uart_dw_16550_init(UART0_BASE, uart_clock_frequency(boot_settings.frequency),
+    uart_dw_16550_init(UART0_BASE, uart_clock_frequency(boot_settings.frequency, is_haps()),
                        boot_settings.baud);
 
     /*
@@ -236,9 +237,12 @@ int platform_atlantis_init(void)
      */
     console_init(UART0_BASE);
 
-    /* Print the rcpu error now that uart is up */
+    /* Print the errors now that uart is up */
     if (rcpu_rc) {
         printf("Failure initializing the RCPU clocks rc=%d\n", rcpu_rc);
+    }
+    if (nocc_rc) {
+        printf("Failure initializing the NOCC clocks rc=%d\n", nocc_rc);
     }
 
     clock_init();
@@ -250,7 +254,7 @@ static int nor_init(struct dwc_ssi *ssi, struct spi_nor *nor)
 {
     int rc;
 
-    rc = dwc_ssi_init(ssi, QSPI0_BASE, qspi_clock_frequency(boot_settings.frequency),
+    rc = dwc_ssi_init(ssi, QSPI0_BASE, qspi_clock_frequency(boot_settings.frequency, is_haps()),
                           QSPI_MAX_SCLK_HZ, QSPI_FIFO_DEPTH);
     if (rc) {
         return rc;
