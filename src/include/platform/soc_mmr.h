@@ -278,10 +278,19 @@
 #define MMR_PCIE_SUBS_CG_CTL             0x004
 #define   PCIE_SUBS_CG_CTL_ALL           0x0000ffffU
 
+/* Ascalon subsystem control block */
+#define MMR_ASC_SC_PLL_CFG               0x000
+#define MMR_ASC_SC_PLL_STAT              0x008
+#define MMR_ASC_FB_PLL_CFG               0x010
+#define MMR_ASC_FB_PLL_STAT              0x018
+#define MMR_ASC_SS_FB_CLK_MUX            0x028
+#define   ASC_SS_FB_CLK_MUX_FB_PLL       (1U << 0) /* 0: reference clock, 1: FB PLL */
+
 #define SOC_MMR_BASE    0x40000000
 #define PCIE_MMR_BASE   0xA8000000
 #define MM_MMR_BASE     0xB0000000
 #define HSIO_MMR_BASE   0xB40C0000
+#define ASC_MMR_BASE    0xBF000000
 
 /* MM subsystem control block */
 #define MM_CTRL_BASE                     0xB0000000
@@ -324,6 +333,16 @@ static inline uint32_t soc_mmr_read(unsigned int reg)
 static inline void soc_mmr_write(unsigned int reg, uint32_t val)
 {
     mmio_write32(SOC_MMR_BASE + reg, val);
+}
+
+static inline uint32_t asc_mmr_read(unsigned int reg)
+{
+    return mmio_read32(ASC_MMR_BASE + reg);
+}
+
+static inline void asc_mmr_write(unsigned int reg, uint32_t val)
+{
+    mmio_write32(ASC_MMR_BASE + reg, val);
 }
 
 /* The PCIe bus has to be out of reset and clocked for these to complete. */

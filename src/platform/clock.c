@@ -286,6 +286,74 @@ int clock_nocc_init(void)
     return 0;
 }
 
+/* The Ascalon PLLs run from a 100 MHz reference clock, not the oscillator. */
+
+/* 800 MHz = 100 MHz * 64 / (2 * 2 * 2) */
+static const struct pll_dividers asc_fb_pll_dividers = {
+    .ref_div = 2, .post_div1 = 2, .post_div2 = 2, .fb_div = 64,
+};
+
+/* 400 MHz = 100 MHz * 64 / (4 * 2 * 2) */
+static const struct pll_dividers asc_sc_pll_dividers = {
+    .ref_div = 4, .post_div1 = 2, .post_div2 = 2, .fb_div = 64,
+};
+
+/* Ascalon PLL config is slightly different from the SoC PLL */
+#define ASC_PLL_CFG_PLL_EN (1U << 0)
+#define ASC_PLL_CFG_DSMEN  (1U << 27)
+#define ASC_PLL_CFG_INT_EN (1U << 30)
+#define ASC_PLL_STAT_LOCK  (1U << 0)
+
+
+/* Program an Ascalon PLL, enable it and wait for it to lock. */
+static int asc_pll_init(uint32_t cfg, uint32_t stat, const struct pll_dividers *div,
+                        uint32_t flags)
+{
+    uint64_t timeout;
+    uint32_t reg;
+
+    reg = flags;
+    reg |= div->ref_div << PLL_CFG_REF_DIV_SHIFT;
+    reg |= div->post_div1 << PLL_CFG_POST_DIV1_SHIFT;
+    reg |= div->post_div2 << PLL_CFG_POST_DIV2_SHIFT;
+    reg |= div->fb_div << PLL_CFG_FB_DIV_SHIFT;
+
+    /* The dividers are written with the PLL disabled, then it is enabled. */
+    asc_mmr_write(cfg, reg);
+    asc_mmr_write(cfg, reg | ASC_PLL_CFG_PLL_EN);
+
+    timeout_start(&timeout, PLL_LOCK_TIMEOUT_US);
+    while (!(asc_mmr_read(stat) & ASC_PLL_STAT_LOCK)) {
+        if (timeout_expired(&timeout)) {
+            return -ETIMEDOUT;
+        }
+    }
+    return 0;
+}
+
+int clock_asc_init(void)
+{
+    int fb_rc;
+    int sc_rc;
+
+    /* Run the FB clock from the reference clock while its PLL is set up. */
+    asc_mmr_write(MMR_ASC_SS_FB_CLK_MUX,
+                  asc_mmr_read(MMR_ASC_SS_FB_CLK_MUX) & ~ASC_SS_FB_CLK_MUX_FB_PLL);
+
+    fb_rc = asc_pll_init(MMR_ASC_FB_PLL_CFG, MMR_ASC_FB_PLL_STAT, &asc_fb_pll_dividers,
+                         ASC_PLL_CFG_DSMEN | ASC_PLL_CFG_INT_EN);
+    if (!fb_rc) {
+        asc_mmr_write(MMR_ASC_SS_FB_CLK_MUX,
+                      asc_mmr_read(MMR_ASC_SS_FB_CLK_MUX) | ASC_SS_FB_CLK_MUX_FB_PLL);
+    }
+
+    /* The SC PLL does not depend on the FB one, so it is set up either way. */
+    sc_rc = asc_pll_init(MMR_ASC_SC_PLL_CFG, MMR_ASC_SC_PLL_STAT, &asc_sc_pll_dividers,
+                         0);
+
+    return fb_rc ? fb_rc : sc_rc;
+}
+
 /* Check whether a subsystem bus has been enabled */
 static bool bus_enabled(uint32_t bus_rstn, uint32_t bus_cg)
 {

@@ -251,6 +251,7 @@ void clock_init(void)
         }
     }
     clock_device_init();
+    clock_asc_init();
 }
 
 int platform_atlantis_init(void)

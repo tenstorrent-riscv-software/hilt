@@ -40,6 +40,9 @@ int clock_rcpu_init(uint32_t osc_frequency, bool haps);
 /* Enable the NOCC PLL and run the NOCC off it.*/
 int clock_nocc_init(void);
 
+/* Enable the PLLs of the Ascalon subsystem. */
+int clock_asc_init(void);
+
 /* Bring up all devices. This should be done after PLL's are enabled. */
 int clock_device_init(void);
 
