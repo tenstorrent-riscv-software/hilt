@@ -285,6 +285,36 @@ static int firewall_enable_access(void)
     return 0;
 }
 
+/* In one IO control register, clear the bits of the pins in mask and set those in set. */
+static void io_pin_update(unsigned int reg, uint32_t mask, uint32_t set)
+{
+    io_mmr_write(reg, (io_mmr_read(reg) & ~mask) | set);
+}
+
+/*
+ * Give the UART, I2C and JTAG pins their function and set their pulls: the
+ * UART and I2C pins are pulled up, and of the JTAG pins TCK is pulled down,
+ * TMS, TDI and TRSTN are pulled up and TDO has no pull.
+ */
+static void pinmux_init(void)
+{
+    /* A cleared function select bit gives the pin its function. */
+    io_pin_update(MMR_IO_PIN_FUNC_SEL0, IO_PIN0_I2C_ALL | IO_PIN0_JTAG_ALL, 0);
+    io_pin_update(MMR_IO_PIN_FUNC_SEL1, IO_PIN1_UART_ALL | IO_PIN1_I2C_ALL, 0);
+    io_pin_update(MMR_IO_PIN_FUNC_SEL4, IO_PIN4_ASC_JTAG_ALL, 0);
+
+    io_pin_update(MMR_IO_PIN_PU_CTRL0, IO_PIN0_I2C_ALL | IO_PIN0_JTAG_ALL,
+                  IO_PIN0_I2C_ALL | IO_PIN0_JTAG_TMS | IO_PIN0_JTAG_TDI |
+                      IO_PIN0_JTAG_TRSTN);
+    io_pin_update(MMR_IO_PIN_PU_CTRL1, IO_PIN1_UART_ALL | IO_PIN1_I2C_ALL,
+                  IO_PIN1_UART_ALL | IO_PIN1_I2C_ALL);
+    io_pin_update(MMR_IO_PIN_PU_CTRL4, IO_PIN4_ASC_JTAG_ALL,
+                  IO_PIN4_ASC_JTAG_TMS | IO_PIN4_ASC_JTAG_TDI | IO_PIN4_ASC_JTAG_TRSTN);
+
+    io_pin_update(MMR_IO_PIN_PD_CTRL0, IO_PIN0_JTAG_ALL, IO_PIN0_JTAG_TCK);
+    io_pin_update(MMR_IO_PIN_PD_CTRL4, IO_PIN4_ASC_JTAG_ALL, IO_PIN4_ASC_JTAG_TCK);
+}
+
 void clock_init(void)
 {
     if (platform_atlantis_is_bootrom()) {
@@ -320,6 +350,7 @@ void clock_init(void)
         }
     }
     clock_device_init();
+    pinmux_init();
     clock_asc_init();
 }
 

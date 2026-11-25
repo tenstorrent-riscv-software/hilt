@@ -307,6 +307,59 @@
 /* First version of the block that reports ASC_CL_STAT_SFT_RST_DONE */
 #define   ASC_VERSION_ID_SFT_RST_DONE    0x20260128U
 
+/*
+ * IO control block. The pins are split over groups of registers, with one bit
+ * for each pin: a function select (0: the pin has its function, 1: it does
+ * not), a pull-up enable and a pull-down enable. A pin has the same bit in each
+ * register of its group.
+ */
+#define IO_MMR_BASE                      0x40060000
+#define MMR_IO_PIN_FUNC_SEL0             0x004
+#define MMR_IO_PIN_PU_CTRL0              0x014
+#define MMR_IO_PIN_PD_CTRL0              0x018
+#define   IO_PIN0_I2C3_SCL               (1U << 0)
+#define   IO_PIN0_I2C2_SDA               (1U << 1)
+#define   IO_PIN0_I2C2_SCL               (1U << 2)
+#define   IO_PIN0_I2C1_SDA               (1U << 3)
+#define   IO_PIN0_I2C1_SCL               (1U << 4)
+#define   IO_PIN0_I2C0_SDA               (1U << 5)
+#define   IO_PIN0_I2C0_SCL               (1U << 6)
+#define   IO_PIN0_I2C0_SMBSUS            (1U << 7)
+#define   IO_PIN0_I2C0_SMBALERT          (1U << 8)
+#define   IO_PIN0_I2C_ALL                0x000001ffU
+#define   IO_PIN0_JTAG_TRSTN             (1U << 25)
+#define   IO_PIN0_JTAG_TDO               (1U << 26)
+#define   IO_PIN0_JTAG_TDI               (1U << 27)
+#define   IO_PIN0_JTAG_TMS               (1U << 28)
+#define   IO_PIN0_JTAG_TCK               (1U << 29)
+#define   IO_PIN0_JTAG_ALL               0x3e000000U
+#define MMR_IO_PIN_FUNC_SEL1             0x024
+#define MMR_IO_PIN_PU_CTRL1              0x034
+#define   IO_PIN1_UART4_TXD              (1U << 17)
+#define   IO_PIN1_UART4_RXD              (1U << 18)
+#define   IO_PIN1_UART3_TXD              (1U << 19)
+#define   IO_PIN1_UART3_RXD              (1U << 20)
+#define   IO_PIN1_UART2_TXD              (1U << 21)
+#define   IO_PIN1_UART2_RXD              (1U << 22)
+#define   IO_PIN1_UART1_TXD              (1U << 23)
+#define   IO_PIN1_UART1_RXD              (1U << 24)
+#define   IO_PIN1_UART0_TXD              (1U << 27)
+#define   IO_PIN1_UART0_RXD              (1U << 28)
+#define   IO_PIN1_UART_ALL               0x19fe0000U
+#define   IO_PIN1_I2C4_SDA               (1U << 29)
+#define   IO_PIN1_I2C4_SCL               (1U << 30)
+#define   IO_PIN1_I2C3_SDA               (1U << 31)
+#define   IO_PIN1_I2C_ALL                0xe0000000U
+#define MMR_IO_PIN_FUNC_SEL4             0x084
+#define MMR_IO_PIN_PU_CTRL4              0x094
+#define MMR_IO_PIN_PD_CTRL4              0x098
+#define   IO_PIN4_ASC_JTAG_TDO           (1U << 22)
+#define   IO_PIN4_ASC_JTAG_TDI           (1U << 23)
+#define   IO_PIN4_ASC_JTAG_TMS           (1U << 24)
+#define   IO_PIN4_ASC_JTAG_TCK           (1U << 25)
+#define   IO_PIN4_ASC_JTAG_TRSTN         (1U << 26)
+#define   IO_PIN4_ASC_JTAG_ALL           0x07c00000U
+
 #define SOC_MMR_BASE    0x40000000
 #define PCIE_MMR_BASE   0xA8000000
 #define MM_MMR_BASE     0xB0000000
@@ -390,6 +443,16 @@
 #define   HSIO_SD_SYS_CFG_CARD_WRITE_PROT_N   (1U << 5) /* 1: not write protected */
 
 #define CLOCK_GATE_DELAY_US 1000
+
+static inline uint32_t io_mmr_read(unsigned int reg)
+{
+    return mmio_read32(IO_MMR_BASE + reg);
+}
+
+static inline void io_mmr_write(unsigned int reg, uint32_t val)
+{
+    mmio_write32(IO_MMR_BASE + reg, val);
+}
 
 static inline uint32_t soc_mmr_read(unsigned int reg)
 {
