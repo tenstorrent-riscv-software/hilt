@@ -101,6 +101,11 @@
 #define MMR_SOC_RCPU_MTVEC_ADDR          0x02C
 #define MMR_SOC_ATE_TEST_MODE            0x030
 #define MMR_SOC_MEM_INTLV_MODE           0x034
+#define   SOC_MEM_INTLV_MODE_MASK        0x3U
+#define   SOC_MEM_INTLV_MODE_64B         0x0U
+#define   SOC_MEM_INTLV_MODE_128B        0x1U
+#define   SOC_MEM_INTLV_MODE_256B        0x2U
+#define   SOC_MEM_INTLV_MODE_1GB         0x3U
 #define MMR_SOC_RCPU_RADDR_EXT           0x038
 #define MMR_SOC_RCPU_WADDR_EXT           0x03C
 /* reserved 0x40 */

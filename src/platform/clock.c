@@ -199,7 +199,16 @@ static int bus_pll_init(uint32_t cfg, uint32_t en, uint32_t bus_rstn,
 /* There is a PLL for each of the two DDR controllers. */
 int clock_lpddr_init(void)
 {
+    uint32_t reg;
     int rc;
+
+    /* Enable interleave mode for both controllers */
+    reset_bus_set(SOC_BUS_RSTN_DDRC0_CLK | SOC_BUS_RSTN_DDRC1_CLK, false);
+
+    reg = soc_mmr_read(MMR_SOC_MEM_INTLV_MODE);
+    reg &= ~SOC_MEM_INTLV_MODE_MASK;
+    reg |= SOC_MEM_INTLV_MODE_1GB;
+    soc_mmr_write(MMR_SOC_MEM_INTLV_MODE, reg);
 
     rc = bus_pll_init(MMR_SOC_PLL_LPDDR0_CFG, MMR_SOC_PLL_LPDDR0_EN,
                       SOC_BUS_RSTN_DDRC0_CLK, SOC_BUS_CG_DDRC0, &lpddr_pll_dividers);
