@@ -79,6 +79,27 @@ static const struct pll_dividers nocc_pll_dividers = {
     .ref_div = 1, .post_div1 = 3, .post_div2 = 1, .fb_div = 100,
 };
 
+
+/* 800 MHz = 24 MHz * 100 / (1 * 3 * 1) */
+static const struct pll_dividers lpddr_pll_dividers = {
+    .ref_div = 1, .post_div1 = 3, .post_div2 = 1, .fb_div = 100,
+};
+
+/* 2304 MHz = 24 MHz * 192 / (2 * 1 * 1) */
+static const struct pll_dividers mm_pll_dividers = {
+    .ref_div = 2, .post_div1 = 1, .post_div2 = 1, .fb_div = 192,
+};
+
+/* 800 MHz = 24 MHz * 100 / (1 * 3 * 1) */
+static const struct pll_dividers hsio_pll_dividers = {
+    .ref_div = 1, .post_div1 = 3, .post_div2 = 1, .fb_div = 100,
+};
+
+/* 1500 MHz = 24 MHz * 125 / (2 * 1 * 1) */
+static const struct pll_dividers pcie_pll_dividers = {
+    .ref_div = 2, .post_div1 = 1, .post_div2 = 1, .fb_div = 125,
+};
+
 /* PLL config register */
 #define PLL_CFG_BYPASS          (1U << 1)
 #define PLL_CFG_REF_DIV_SHIFT   2
@@ -173,6 +194,38 @@ static int bus_pll_init(uint32_t cfg, uint32_t en, uint32_t bus_rstn,
 
     clock_bus_set_cg_enable(bus_cg, true);
     return 0;
+}
+
+/* There is a PLL for each of the two DDR controllers. */
+int clock_lpddr_init(void)
+{
+    int rc;
+
+    rc = bus_pll_init(MMR_SOC_PLL_LPDDR0_CFG, MMR_SOC_PLL_LPDDR0_EN,
+                      SOC_BUS_RSTN_DDRC0_CLK, SOC_BUS_CG_DDRC0, &lpddr_pll_dividers);
+    if (rc) {
+        return rc;
+    }
+    return bus_pll_init(MMR_SOC_PLL_LPDDR1_CFG, MMR_SOC_PLL_LPDDR1_EN,
+                        SOC_BUS_RSTN_DDRC1_CLK, SOC_BUS_CG_DDRC1, &lpddr_pll_dividers);
+}
+
+int clock_mm_init(void)
+{
+    return bus_pll_init(MMR_SOC_PLL_MM_CFG, MMR_SOC_PLL_MM_EN, SOC_BUS_RSTN_MM_CLK,
+                        SOC_BUS_CG_MM, &mm_pll_dividers);
+}
+
+int clock_hsio_init(void)
+{
+    return bus_pll_init(MMR_SOC_PLL_HSIO_CFG, MMR_SOC_PLL_HSIO_EN, SOC_BUS_RSTN_HSIO_CLK,
+                        SOC_BUS_CG_HSIO, &hsio_pll_dividers);
+}
+
+int clock_pcie_init(void)
+{
+    return bus_pll_init(MMR_SOC_PLL_PCIE_CFG, MMR_SOC_PLL_PCIE_EN, SOC_BUS_RSTN_PCIE_CLK,
+                        SOC_BUS_CG_PCIE, &pcie_pll_dividers);
 }
 
 /*

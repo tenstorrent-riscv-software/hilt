@@ -151,6 +151,21 @@ static bool is_haps(void)
            boot_settings.platform == PLATFORM_HAPS_PCIE;
 }
 
+static bool has_pcie(void)
+{
+    return boot_settings.platform != PLATFORM_HAPS_BOOT;
+}
+
+static bool has_hsio(void)
+{
+    return boot_settings.platform != PLATFORM_HAPS_PCIE;
+}
+
+static bool has_mm(void)
+{
+    return boot_settings.platform != PLATFORM_HAPS_PCIE;
+}
+
 static uint32_t get_boot_mode(void)
 {
     uint32_t reg = soc_mmr_read(MMR_SOC_RCPU_BOOT_MODE);
@@ -211,6 +226,29 @@ void clock_init(void)
             reset_lsio_set(SOC_LSIO_BLK_RST_QSPI, false);
         }
         return;
+    }
+
+    int rc = clock_lpddr_init();
+    if (rc) {
+        printf("Failure initializing the DDR clocks rc=%d\n", rc);
+    }
+    if (has_mm()) {
+        rc = clock_mm_init();
+        if (rc) {
+            printf("Failure initializing the MM clocks rc=%d\n", rc);
+        }
+    }
+    if (has_hsio()) {
+        rc = clock_hsio_init();
+        if (rc) {
+            printf("Failure initializing the HSIO clocks rc=%d\n", rc);
+        }
+    }
+    if (has_pcie()) {
+        rc= clock_pcie_init();
+        if (rc) {
+            printf("Failure initializing the PCIE clocks rc=%d\n", rc);
+        }
     }
 }
 

@@ -26,6 +26,14 @@ void clock_gmac_set_cg_enable(uint32_t mask, bool enable);
 
 void clock_pcie_set_cg_enable(uint32_t mask, bool enable);
 
+int clock_lpddr_init(void);
+
+int clock_mm_init(void);
+
+int clock_hsio_init(void);
+
+int clock_pcie_init(void);
+
 /* Enable the RCPU PLL and run the RCPU off it */
 int clock_rcpu_init(uint32_t osc_frequency, bool haps);
 
