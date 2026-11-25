@@ -386,6 +386,7 @@ int clock_asc_init(void)
     /* Switch the Ascalon clocks to their own source */
     asc_force_ref_clock(false);
 
+    reset_cpl_release();
     return fb_rc ? fb_rc : sc_rc;
 }
 

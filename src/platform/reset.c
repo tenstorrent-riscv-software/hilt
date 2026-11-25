@@ -4,6 +4,7 @@
  */
 
 #include <types.h>
+#include <timer.h>
 #include <platform/reset.h>
 #include <platform/soc_mmr.h>
 
@@ -62,4 +63,40 @@ void reset_pcie_set(uint32_t mask, bool assert)
 {
     pcie_mmr_write(MMR_PCIE_SUBS_RST_CTL,
                    reset_update(pcie_mmr_read(MMR_PCIE_SUBS_RST_CTL), mask, assert));
+}
+
+static void cpl_rstctrl_set(unsigned int reg, uint32_t mask, bool set)
+{
+    uint32_t val = cpl_rstctrl_mmr_read(reg);
+
+    if (set) {
+        val |= mask;
+    } else {
+        val &= ~mask;
+    }
+    cpl_rstctrl_mmr_write(reg, val);
+}
+
+/* The reference clock may only be forced a while after a reset is released. */
+#define CPL_RESET_DELAY_US 1000
+
+void reset_cpl_release(void)
+{
+    udelay(CPL_RESET_DELAY_US);
+
+    /* Run all CPL clocks from the reference clock while the resets change. */
+    cpl_rstctrl_set(MMR_CPL_RSTCTRL_WARM_RESET,
+                    CPL_RSTCTRL_WARM_RESET_FORCE_SS_TO_REF_CLOCK_N, false);
+
+    /* Assert the warm reset, then the cold reset. */
+    cpl_rstctrl_set(MMR_CPL_RSTCTRL_WARM_RESET, CPL_RSTCTRL_WARM_RESET_CLUSTER_N, false);
+    cpl_rstctrl_set(MMR_CPL_RSTCTRL_COLD_RESET, CPL_RSTCTRL_COLD_RESET_CLUSTER_N, false);
+
+    /* Release them in the opposite order. */
+    cpl_rstctrl_set(MMR_CPL_RSTCTRL_COLD_RESET, CPL_RSTCTRL_COLD_RESET_CLUSTER_N, true);
+    cpl_rstctrl_set(MMR_CPL_RSTCTRL_WARM_RESET, CPL_RSTCTRL_WARM_RESET_CLUSTER_N, true);
+
+    /* Switch the CPL clocks back to their own source. */
+    cpl_rstctrl_set(MMR_CPL_RSTCTRL_WARM_RESET,
+                    CPL_RSTCTRL_WARM_RESET_FORCE_SS_TO_REF_CLOCK_N, true);
 }

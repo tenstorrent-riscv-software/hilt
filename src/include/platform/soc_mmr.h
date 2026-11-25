@@ -308,6 +308,15 @@
 #define HSIO_MMR_BASE   0xB40C0000
 #define ASC_MMR_BASE    0xBF000000
 
+/* CPL reset unit */
+#define CPL_RSTCTRL_MMR_BASE             0xA2102000
+#define MMR_CPL_RSTCTRL_COLD_RESET       0x004
+#define   CPL_RSTCTRL_COLD_RESET_CLUSTER_N (1U << 0) /* 0: in reset */
+#define MMR_CPL_RSTCTRL_WARM_RESET       0x008
+#define   CPL_RSTCTRL_WARM_RESET_CLUSTER_N (1U << 0) /* 0: in reset */
+/* 0: all CPL clocks run from the reference clock, 1: from their own source */
+#define   CPL_RSTCTRL_WARM_RESET_FORCE_SS_TO_REF_CLOCK_N (1U << 1)
+
 /* MM subsystem control block */
 #define MM_CTRL_BASE                     0xB0000000
 #define MMR_MM_CLK_GATE_CFG              0x008
@@ -349,6 +358,16 @@ static inline uint32_t soc_mmr_read(unsigned int reg)
 static inline void soc_mmr_write(unsigned int reg, uint32_t val)
 {
     mmio_write32(SOC_MMR_BASE + reg, val);
+}
+
+static inline uint32_t cpl_rstctrl_mmr_read(unsigned int reg)
+{
+    return mmio_read32(CPL_RSTCTRL_MMR_BASE + reg);
+}
+
+static inline void cpl_rstctrl_mmr_write(unsigned int reg, uint32_t val)
+{
+    mmio_write32(CPL_RSTCTRL_MMR_BASE + reg, val);
 }
 
 static inline uint32_t asc_mmr_read(unsigned int reg)

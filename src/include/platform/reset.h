@@ -44,4 +44,9 @@ void reset_gmac_set(uint32_t mask, bool assert);
 /* PCIe subsystem resets, PCIE_SUBS_RST_CTL_* */
 void reset_pcie_set(uint32_t mask, bool assert);
 
+/* Put the CPL through a cold and warm reset. This must be run after the Ascalon
+ * PLLs are up.
+ */
+void reset_cpl_release(void);
+
 #endif /* __PLATFORM_RESET_H__ */
