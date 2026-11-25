@@ -216,6 +216,75 @@ const char *platform_atlantis_boot_cause_name(void)
     }
 }
 
+/*
+ * There are two firewalls, SMN and NoC. Each has 2 filters. By default
+ * no traffic will be let through, filters must be enabled for the RCPU to
+ * access DDR.
+ */
+#define SMN_FIREWALL_BASE  0x41010000U
+#define NOCM_FIREWALL_BASE 0x41020000U
+
+#define FIREWALL_FILTER_CONFIG(n)     ((n) * 0x20 + 0x00)
+#define FIREWALL_FILTER_START_ADDR(n) ((n) * 0x20 + 0x08)
+#define FIREWALL_FILTER_END_ADDR(n)   ((n) * 0x20 + 0x10)
+
+/* Low word of the filter config */
+#define FIREWALL_FILTER_CONFIG_READ_EN     (1U << 0)
+#define FIREWALL_FILTER_CONFIG_WRITE_EN    (1U << 1)
+#define FIREWALL_FILTER_CONFIG_ALLOW_NS    (1U << 8)
+#define FIREWALL_FILTER_CONFIG_ALLOW_BURST (1U << 24)
+/* High word of the filter config: the filter cannot be changed until reset */
+#define FIREWALL_FILTER_CONFIG_HI_LOCKED   (1U << 31)
+
+#define NUM_FIREWALLS 2U
+static const uintptr_t firewalls[NUM_FIREWALLS] = { SMN_FIREWALL_BASE, NOCM_FIREWALL_BASE };
+
+static void firewall_write64(uintptr_t addr, uint32_t lo, uint32_t hi)
+{
+    mmio_write32(addr, lo);
+    mmio_write32(addr + 4, hi);
+}
+
+static bool firewall_filter_locked(uintptr_t base, unsigned int filter)
+{
+    return mmio_read32(base + FIREWALL_FILTER_CONFIG(filter) + 4) &
+           FIREWALL_FILTER_CONFIG_HI_LOCKED;
+}
+
+/* Open the SMN and NoC-M firewalls to the whole address space and lock them: */
+static int firewall_enable_access(void)
+{
+    uint32_t config = FIREWALL_FILTER_CONFIG_READ_EN | FIREWALL_FILTER_CONFIG_WRITE_EN |
+                      FIREWALL_FILTER_CONFIG_ALLOW_BURST;
+    unsigned int count = 0;
+
+    for (unsigned int i = 0; i < NUM_FIREWALLS; i++) {
+        for (unsigned int filter = 0; filter < 2; filter++) {
+            if (firewall_filter_locked(firewalls[i], filter)) {
+                printf("%s firewall %d filter %d is already locked\n",
+                        __FILE__, i, filter);
+                continue;
+            }
+            firewall_write64(firewalls[i] + FIREWALL_FILTER_START_ADDR(filter), 0, 0);
+            firewall_write64(firewalls[i] + FIREWALL_FILTER_END_ADDR(filter),
+                             0xffffffffU, 0xffffffffU);
+            count++;
+        }
+    }
+
+    for (unsigned int i = 0; i < NUM_FIREWALLS; i++) {
+        firewall_write64(firewalls[i] + FIREWALL_FILTER_CONFIG(0), config,
+                         FIREWALL_FILTER_CONFIG_HI_LOCKED);
+    }
+    for (unsigned int i = 0; i < NUM_FIREWALLS; i++) {
+        firewall_write64(firewalls[i] + FIREWALL_FILTER_CONFIG(1),
+                         config | FIREWALL_FILTER_CONFIG_ALLOW_NS,
+                         FIREWALL_FILTER_CONFIG_HI_LOCKED);
+    }
+    printf("%d firewall filters enabled and locked\n", count);
+    return 0;
+}
+
 void clock_init(void)
 {
     if (platform_atlantis_is_bootrom()) {
@@ -286,6 +355,10 @@ int platform_atlantis_init(void)
     }
 
     clock_init();
+
+    if (!platform_atlantis_is_bootrom()) {
+        firewall_enable_access();
+    }
 
     return 0;
 }
