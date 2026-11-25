@@ -432,6 +432,21 @@ static bool bus_enabled(uint32_t bus_rstn, uint32_t bus_cg)
            (soc_mmr_read(MMR_SOC_BUS_CG) & bus_cg);
 }
 
+/*
+ * Tell an SD host controller that its supply and its clocks are stable, that
+ * a card is present and that it is not write protected.
+ */
+static void hsio_sd_sys_cfg_init(unsigned int reg)
+{
+    uint32_t val = hsio_mmr_read(reg);
+
+    val |= HSIO_SD_SYS_CFG_HOST_REG_VOL_STABLE | HSIO_SD_SYS_CFG_INT_BCLK_STABLE |
+           HSIO_SD_SYS_CFG_INT_ACLK_STABLE | HSIO_SD_SYS_CFG_INT_TMCLK_STABLE |
+           HSIO_SD_SYS_CFG_CARD_WRITE_PROT_N;
+    val &= ~HSIO_SD_SYS_CFG_CARD_DETECT_N;
+    hsio_mmr_write(reg, val);
+}
+
 int clock_device_init(void)
 {
     /*
@@ -470,6 +485,11 @@ int clock_device_init(void)
         clock_hsio_set_cg_enable(HSIO_BLK_CG_ALL, true);
         reset_hsio_set(HSIO_BLK_RST_ALL, true);
         reset_hsio_set(HSIO_BLK_RST_ALL, false);
+
+        hsio_sd_sys_cfg_init(MMR_HSIO_EMMC0_SYS_CFG);
+        hsio_sd_sys_cfg_init(MMR_HSIO_EMMC1_SYS_CFG);
+        hsio_sd_sys_cfg_init(MMR_HSIO_SDIO0_SYS_CFG);
+        hsio_sd_sys_cfg_init(MMR_HSIO_SDIO1_SYS_CFG);
 
         /* The GMACs have their clock gates and resets in a register of their own */
         clock_gmac_set_cg_enable(HSIO_GMAC_CRG_CFG_XCLK_ALL, true);

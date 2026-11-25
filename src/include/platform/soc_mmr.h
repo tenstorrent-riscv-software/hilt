@@ -369,6 +369,17 @@
 #define   HSIO_GMAC_CRG_CFG_GMAC0_XCLK   (1U << 2)
 #define   HSIO_GMAC_CRG_CFG_GMAC1_XCLK   (1U << 3)
 #define   HSIO_GMAC_CRG_CFG_XCLK_ALL     0x0000000cU
+/* One for each SD host controller, all with the same layout */
+#define MMR_HSIO_EMMC0_SYS_CFG           0x040
+#define MMR_HSIO_EMMC1_SYS_CFG           0x044
+#define MMR_HSIO_SDIO0_SYS_CFG           0x048
+#define MMR_HSIO_SDIO1_SYS_CFG           0x04C
+#define   HSIO_SD_SYS_CFG_HOST_REG_VOL_STABLE (1U << 0)
+#define   HSIO_SD_SYS_CFG_INT_BCLK_STABLE     (1U << 1)
+#define   HSIO_SD_SYS_CFG_INT_ACLK_STABLE     (1U << 2)
+#define   HSIO_SD_SYS_CFG_INT_TMCLK_STABLE    (1U << 3)
+#define   HSIO_SD_SYS_CFG_CARD_DETECT_N       (1U << 4) /* 0: card present */
+#define   HSIO_SD_SYS_CFG_CARD_WRITE_PROT_N   (1U << 5) /* 1: not write protected */
 
 #define CLOCK_GATE_DELAY_US 1000
 
