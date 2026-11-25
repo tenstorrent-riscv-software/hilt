@@ -447,6 +447,33 @@ static void hsio_sd_sys_cfg_init(unsigned int reg)
     hsio_mmr_write(reg, val);
 }
 
+#define GMAC_CRG_CFG_ACK_TIMEOUT_US 100
+
+/*
+ * The GMAC clock and reset configuration is only taken when DIV_CFG_EN is
+ * set: set it, wait for the ack and clear it again.
+ */
+static int gmac_crg_cfg_apply(void)
+{
+    uint64_t timeout;
+    int rc = 0;
+
+    hsio_mmr_write(MMR_HSIO_GMAC_CRG_CFG,
+                   hsio_mmr_read(MMR_HSIO_GMAC_CRG_CFG) | HSIO_GMAC_CRG_CFG_DIV_CFG_EN);
+
+    timeout_start(&timeout, GMAC_CRG_CFG_ACK_TIMEOUT_US);
+    while (!(hsio_mmr_read(MMR_HSIO_GMAC_CRG_CFG) & HSIO_GMAC_CRG_CFG_CFG_ACK)) {
+        if (timeout_expired(&timeout)) {
+            rc = -ETIMEDOUT;
+            break;
+        }
+    }
+
+    hsio_mmr_write(MMR_HSIO_GMAC_CRG_CFG,
+                   hsio_mmr_read(MMR_HSIO_GMAC_CRG_CFG) & ~HSIO_GMAC_CRG_CFG_DIV_CFG_EN);
+    return rc;
+}
+
 int clock_device_init(void)
 {
     /*
@@ -494,6 +521,9 @@ int clock_device_init(void)
         /* The GMACs have their clock gates and resets in a register of their own */
         clock_gmac_set_cg_enable(HSIO_GMAC_CRG_CFG_XCLK_ALL, true);
         reset_gmac_set(HSIO_GMAC_CRG_CFG_XRSTN_ALL, false);
+        if (gmac_crg_cfg_apply()) {
+            printf("%s gmac clock and reset configuration was not acked\n", __FILE__);
+        }
     } else {
         printf("%s hsio bus is not enabled, skipping its devices\n", __FILE__);
     }
