@@ -567,7 +567,17 @@ static uint64_t nocc_clock_frequency(uint32_t osc_frequency, bool haps)
 
 uint64_t uart_clock_frequency(uint32_t osc_frequency, bool haps)
 {
-    return nocc_clock_frequency(osc_frequency, haps);
+    uint32_t div4;
+
+    /* The HAPS models clock the UARTs at the oscillator rate. */
+    if (haps) {
+        return osc_frequency;
+    }
+
+    /* uarts run from the nocc clock through div4 divisor */
+    div4 = (soc_mmr_read(MMR_SOC_NOCC_CLK_CFG) & SOC_NOCC_CLK_CFG_DIV4_MASK) >>
+           SOC_NOCC_CLK_CFG_DIV4_SHIFT;
+    return nocc_clock_frequency(osc_frequency, haps) / (div4 + 1);
 }
 
 uint64_t qspi_clock_frequency(uint32_t osc_frequency, bool haps)

@@ -51,7 +51,7 @@ int clock_device_init(void);
  * run off the osc_frequency.
  */
 
-/* Reference clock of the UARTs, the NOCC clock */
+/* Reference clock of the UARTs: the NOCC clock through its div4 divider */
 uint64_t uart_clock_frequency(uint32_t osc_frequency, bool haps);
 
 /* Reference clock of the QSPI controller: the NOCC clock */
