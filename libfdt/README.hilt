@@ -1,0 +1,11 @@
+hilt/libfdt/ is a minimally modified version of upstream libfdt that is
+distributed with the dtc project hosted at github.com/dgibson/dtc.git.
+
+This version is taken from dtc.git commit 8f48565 ("Bump version to v1.8.1")
+by copying all files from the libfdt/ directory.
+
+The only modifications from the upstream source are the additions of this
+file and changes to meson.build for cross compiling with picolibc.
+
+Local libfdt changes should be kept to a minimum, and submitted upstream if
+possible.

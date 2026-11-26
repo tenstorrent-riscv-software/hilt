@@ -27,6 +27,13 @@ Required tools:
 * ninja
 * Python 3.
 
+If not providing the platform-fw.fit via the `platform-fw` option, HILT
+will generate a placeholder image. The following tools are required:
+* binman
+* u-boot-tools
+* device-tree-compiler
+* python3-libfdt
+
 ### Building
 
 To build the applicaiton, run the following command:
@@ -40,28 +47,29 @@ The following meson options can be set at build time:
 
 | Option        | Type    | Default | Description                              |
 |---------------|---------|---------|------------------------------------------|
-| `platform-fw` | string  | `''`    | Platform firmware binary to add to the NOR |
+| `platform-fw` | string  | `''`    | Platform firmware FIT to add to the NOR  |
+| `ascalon-fw`  | string  | `''`    | Ascalon firmware FIT to add to the NOR   |
 | `frequency`   | integer | `0`     | System clock in Hz. `0` selects 24 MHz.  |
 | `baud     `   | integer | `9600`  | Console baud rate.                       |
 | `platform`    | combo   | `silicon` | `silicon` (also QEMU), `haps-boot` or `haps-pcie` |
 
-Options are set with `-D<option>=<value>`. For example, to provide a placeform-fw binary:
+Options are set with `-D<option>=<value>`. For example, to provide a platform-fw FIT:
 
 ```sh
 meson setup build --cross-file cross/riscv32-rondel.ini \
-    -Dplatform-fw=/path/to/platform-fw.bin
+    -Dplatform-fw=/path/to/platform-fw.fit
 ```
 
 Build outputs are produced in the build/ directory:
 
 - `hilt.bin` / `hilt.elf` - the firmware targeting RCPU SRAM.
 - `hilt.simg` - a simg of hilt.bin
-- `platform-fw.simg` - a simg of the `platform-fw` binary, if one is given
-- `nor.img` - 32 MiB NOR flash image holding the simgs
+- `platform-fw.fit` - a placeholder platform-fw FIT, built when no
+  `platform-fw` is given. Needs U-Boot's `binman` on `PATH`.
+- `nor.img` - 32 MiB NOR flash image holding hilt.simg, the platform-fw FIT
+  and, when `ascalon-fw` is given, the ascalon-fw FIT
 - `hilt-rom.bin` / `hilt-rom.elf` - bootrom image
 - `hilt-rom_h.hex` / `hilt-rom_l.hex` - bootrom memory files for HAPs
-- `platform-fw.simg` - a simg of the platform-fw. Currently this is a
-   placeholder binary.
 
 ### Host unit tests
 
@@ -84,8 +92,7 @@ before handing off execution to HILT.
 ./tests/target/run-qemu-boot.sh
 ```
 
-The test passes once HILT hands off to the platform firmware, so the NOR image
-must be built with the `platform-fw` option.
+The test passes once HILT has loaded the platform firmware FIT.
 
 To test with the HILT bootrom image instead of ZSBL:
 

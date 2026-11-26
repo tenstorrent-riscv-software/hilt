@@ -275,17 +275,30 @@ static const struct boot_image bootrom_images[] = {
     },
 };
 
+/*
+ * FDT cannot be written before the image since the entry will be incorrect.
+ * Setup buffer in hilt to store the FDT while parsing the image
+ * */
+#define PLATFORM_FW_FDT_MAX_SIZE 0x1000
+static uint8_t fdt_buffer[PLATFORM_FW_FDT_MAX_SIZE] __attribute__((aligned(8)));
+
 /* Images to be loaded by the HILT boot stage */
 static const struct boot_image fsbl_boot_images[] = {
     {
         .name = "platform-fw",
-        .is_fit = false,
-        .simg.type = SIMG_PAYLOAD_PLATFORM_FW,
-        .simg.exec = true,
-        .simg.domain = SIMG_DOMAIN_FSBL,
-        .load_addr = PLATFORM_FW_LOAD_ADDR,
+        .is_fit = true,
+        .load_addr = (uintptr_t)fdt_buffer,
+        .fdt_max_size = sizeof(fdt_buffer),
         .max_size = PLATFORM_FW_MAX_SIZE,
         .nor_offset = PLATFORM_FW_NOR_OFFSET,
+    },
+    {
+        .name = "ascalon-fw",
+        .is_fit = true,
+        .load_addr = (uintptr_t)fdt_buffer,
+        .fdt_max_size = sizeof(fdt_buffer),
+        .max_size = ASCALON_FW_MAX_SIZE,
+        .nor_offset = ASCALON_FW_NOR_OFFSET,
     },
 };
 
@@ -508,6 +521,10 @@ static int load_image_nor(const struct boot_image *image, uint32_t *entry)
     return rc ? rc : shutdown_rc;
 }
 
+/* Bounds of the RCPU SRAM images can be loaded into: [start, end) */
+extern char __avail_sram_start[] __attribute__((weak));
+extern char __avail_sram_end[] __attribute__((weak));
+
 int platform_atlantis_load_boot_image(const struct boot_image *image,
                                       uint32_t *entry)
 {
@@ -521,6 +538,12 @@ int platform_atlantis_load_boot_image(const struct boot_image *image,
     } else {
         /* Only NOR boot is currently supported in HILT */
         rc = -EINVAL;
+    }
+
+    if (*entry < (uintptr_t)__avail_sram_start ||
+        *entry >= (uintptr_t)__avail_sram_end) {
+        /* Zero out the entry if it is not from within available rcpu sram */
+        *entry = 0;
     }
 
     return rc;

@@ -12,6 +12,8 @@ project(
     'warning_level=2',
     'werror=true',
     'buildtype=minsize',
+    'default_library=static',
+    'b_staticpic=false',
   ],
 )
 
@@ -19,6 +21,11 @@ project(
 if get_option('optimization') in ['0', 'plain']
   error('-O0 is not supported, minimum of -O1 is required.')
 endif
+
+cc = meson.get_compiler('c')
+
+# libfdt/meson.build is upstream dtc's and expects this from the dtc tree
+wheel_only = true
 
 hilt_inc = include_directories(
     'src',
@@ -28,6 +35,7 @@ hilt_inc = include_directories(
 
 # simg parsing source code. Must be able to be compiled on the host for testing
 image_sources = files('src/crc32.c', 'src/image/simg.c', 'src/image/boot_image.c')
+fit_sources = files('src/image/fit.c')
 
 python = find_program('python3')
 bin2hex = files('tools/bin2hex.py')
@@ -36,7 +44,6 @@ mknor = files('tools/mknor.py')
 
 if meson.is_cross_build()
   # ---- Firmware ----
-  cc = meson.get_compiler('c')
 
   # Header hygiene: the distro toolchain puts newlib headers on the default
   # include path; use -nostdinc and re-add only GCC's internal headers.
@@ -83,6 +90,9 @@ if meson.is_cross_build()
   # libgcc must follow libc.a; gcc's driver picks the rv32imafdc/ilp32d multilib.
   libgcc_dep = declare_dependency(link_args: ['-lgcc'])
 
+  # Vendored libfdt, needs libc_dep for picolibc's headers
+  subdir('libfdt')
+
   # Link to maskrom for bootrom and sram for first stage bootloader
   linker_variants = {
     'sram': {'TEXT_REGION': 'sram', 'DATA_REGION': 'sram',  'DATA_LMA_REGION': 'sram'},
@@ -126,11 +136,17 @@ if meson.is_cross_build()
       configuration: regions,
     )
 
+    # bootrom does use fdt or fits.
+    enable_fdt = variant == 'sram'
+
     hilt_elf += {variant: executable(
       name + '.elf',
       sources,
+      enable_fdt ? fit_sources : [],
       include_directories: hilt_inc,
-      dependencies: [libc_dep, libgcc_dep],
+      c_args: enable_fdt ? ['-DENABLE_FDT'] : [],
+      # libfdt.a needs string functions from libc.a, so it links first.
+      dependencies: (enable_fdt ? [libfdt_dep] : []) + [libc_dep, libgcc_dep],
       link_args: [
         '-T' + linker_script.full_path(),
         '-Wl,-Map=' + name + '.map',
@@ -178,51 +194,67 @@ if meson.is_cross_build()
     build_by_default: true,
   )
 
-
-  # SIMGs placed in the NOR image
-  nor_simgs = [hilt_simg]
-
-  # Use the meson option for platform fw if it is provided. Otherwise use the placeholder.
   platform_fw_option = get_option('platform-fw')
   if platform_fw_option != ''
-    platform_fw = files(platform_fw_option)
+    platform_fw_fit = files(platform_fw_option)
   else
-    platform_fw = rcpu_runtime
+    # binman is only needed if the platform_fw.fit is not proided
+    binman = find_program('binman')
+
+    binman_dir = meson.current_build_dir() / 'platform-fw-binman'
+    platform_fw_fit = custom_target(
+      'platform-fw.fit',
+      input: ['tools/platform-fw-placeholder.dts', rcpu_runtime],
+      output: 'platform-fw.fit',
+      command: [
+        'sh', '-ec',
+        'mkdir -p "$1" && cd "$1" && "$2" build -d "$3" -I "$4" -O . && cp platform-fw.fit "$4"',
+        'binman', binman_dir, binman.full_path(),
+        meson.current_source_dir() / 'tools/platform-fw-placeholder.dts',
+        meson.current_build_dir(),
+      ],
+      build_by_default: true,
+    )
   endif
 
-  platform_fw_simg = custom_target(
-    'platform-fw.simg',
-    input: [mksimg, platform_fw],
-    output: 'platform-fw.simg',
-    command: [python, '@INPUT0@', '@INPUT1@', '--payload-type', 'platform-fw',
-              '--app-name', 'platform-fw', '-o', '@OUTPUT@'],
-    build_by_default: true,
-  )
-  nor_simgs += platform_fw_simg
+  # Images placed in the NOR image
+  nor_images = [hilt_simg, platform_fw_fit]
+
+  # The ascalon-fw FIT is optional: its NOR slot is left erased without one.
+  ascalon_fw_option = get_option('ascalon-fw')
+  if ascalon_fw_option != ''
+    nor_images += files(ascalon_fw_option)
+  endif
 
   # Generate the entire NOR image. Use the layout information defined in
   # src/include/platform/layout.h, the same definitions used by the target
   hilt_nor = custom_target(
     'nor.img',
-    input: [mknor, nor_simgs],
+    input: [mknor, nor_images],
     output: 'nor.img',
-    command: [python, '@INPUT0@', '-o', '@OUTPUT@', nor_simgs],
+    command: [python, '@INPUT0@', '-o', '@OUTPUT@', nor_images],
     depend_files: files('src/include/platform/layout.h'),
     build_by_default: true,
   )
 else
   # ---- host unit tests ----
-  simg_lib = static_library(
-    'simg',
+  # Must come first before anything that uses it.
+  subdir('libfdt')
+
+  image_lib = static_library(
+    'image',
     image_sources,
+    fit_sources,
     include_directories: hilt_inc,
+    c_args: ['-DENABLE_FDT'],
+    dependencies: libfdt_dep,
   )
 
   test_simg = executable(
     'test_simg',
     'tests/host/test_simg.c',
     include_directories: hilt_inc,
-    link_with: simg_lib,
+    link_with: image_lib,
   )
 
   golden_payload = custom_target(
@@ -244,4 +276,14 @@ else
   )
 
   test('simg', test_simg, args: [golden_simg])
+
+  test_fit = executable(
+    'test_fit',
+    'tests/host/test_fit.c',
+    include_directories: hilt_inc,
+    dependencies: libfdt_dep,
+    link_with: image_lib,
+  )
+
+  test('fit', test_fit)
 endif

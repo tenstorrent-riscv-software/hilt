@@ -1,0 +1,53 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: 2025-2026 Tenstorrent USA, Inc.
+ *
+ * A placeholder FIT definition used for testing wihtout dependencies
+*  other projects.
+ */
+
+/dts-v1/;
+
+/ {
+	binman {
+		filename = "platform-fw.fit";
+
+		fit {
+			description = "HILT placeholder platform firmware";
+			#address-cells = <1>;
+			/*
+			 * Keep the image data outside the FDT, so HILT reads it
+			 * from the boot medium straight to its load address.
+			 */
+			fit,external-offset = <0>;
+
+			images {
+				rcpu-runtime {
+					description = "RCPU runtime placeholder";
+					type = "firmware";
+					arch = "riscv";
+					compression = "none";
+					load = <0x20150000>;
+					entry = <0x20150000>;
+
+					blob-ext {
+						filename = "rcpu_runtime-placeholder.bin";
+					};
+
+					hash-1 {
+						algo = "crc32";
+					};
+				};
+			};
+
+			configurations {
+				default = "atlantis";
+
+				atlantis {
+					description = "Atlantis";
+					firmware = "rcpu-runtime";
+				};
+			};
+		};
+	};
+};

@@ -107,6 +107,20 @@ SECTIONS
     __stack_top = ORIGIN(REGION_DATA) + LENGTH(REGION_DATA);
 }
 
+/*
+ * Define unused sram that can be used to load images.
+ *
+ * For the bootrom image, sram is free from the start up to the bootrom_sram
+ * which contains bootrom data sections.
+ *
+ * For the sram image, sram is free from the end of the sram image up to the
+ * postcode region.
+ */
+
+__avail_sram_start = __is_bootrom ? ORIGIN(sram) : ORIGIN(sram) + LENGTH(sram);
+__avail_sram_end = __is_bootrom ? ORIGIN(bootrom_sram) :
+                    ORIGIN(bootrom_sram) + LENGTH(bootrom_sram);
+
 ASSERT(SIZEOF(.binary_header) == 0x200,
        "binary header must be exactly 512 bytes")
 ASSERT(_start == ORIGIN(REGION_TEXT) + 0x200,

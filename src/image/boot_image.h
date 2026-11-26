@@ -23,8 +23,9 @@ struct boot_image {
     const char *name;
     bool is_fit;
     struct boot_image_simg simg; /* simg specific data, only used if is_fit is false */
-    uintptr_t load_addr;         /* address the SIMG or FDT header is loaded to */
-    size_t max_size;             /* header + payload + signature limit */
+    uintptr_t load_addr;         /* address the SIMG or the FIT's FDT is loaded to */
+    size_t max_size;             /* limit on the whole SIMG or FIT */
+    size_t fdt_max_size;         /* FIT only: room at load_addr for the FIT's FDT */
     uint32_t nor_offset;         /* byte offset of the SIMG in NOR flash */
 };
 
